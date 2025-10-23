@@ -6,7 +6,14 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>DesktopTaskAid</AssemblyName>
     <RootNamespace>DesktopTaskAid</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="DesktopTaskAid.Tests\**\*.cs" />
+    <None Remove="DesktopTaskAid.Tests\**\*" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Google.Apis.Calendar.v3" Version="1.69.0.3746" />

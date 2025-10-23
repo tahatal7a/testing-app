@@ -1,19 +1,19 @@
 ﻿DesktopTaskAid
-1.0.0.0
+
 
 winexe
 C#
 .cs
-C:\Users\yassi\OneDrive\Desktop\test-app-main\obj\Debug\net48\
+C:\Users\talha\Downloads\test-app-main\test-app-main\obj\Debug\net48\
 DesktopTaskAid
 none
 false
 TRACE;DEBUG;NETFRAMEWORK;NET48;;NET30_OR_GREATER;NET35_OR_GREATER;NET40_OR_GREATER;NET45_OR_GREATER;NET451_OR_GREATER;NET452_OR_GREATER;NET46_OR_GREATER;NET461_OR_GREATER;NET462_OR_GREATER;NET47_OR_GREATER;NET471_OR_GREATER;NET472_OR_GREATER;NET48_OR_GREATER
-C:\Users\yassi\OneDrive\Desktop\test-app-main\App.xaml
+C:\Users\talha\Downloads\test-app-main\test-app-main\App.xaml
 3-1559215185
 
-24-1433761614
-261636430296
+23-1191356643
+261230276666
 MainWindow.xaml;Themes\darkTheme.xaml;Themes\lightTheme.xaml;
 
 False
