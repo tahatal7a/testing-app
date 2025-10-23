@@ -48,6 +48,11 @@ namespace DesktopTaskAid.Services
         public string ErrorMessage { get; set; }
     }
 
+    public interface IGoogleCalendarClient
+    {
+        Task<IList<Event>> FetchEventsAsync(Stream credentialStream, string tokenDirectory, DateTime timeMin, DateTime timeMax, CancellationToken cancellationToken);
+    }
+
     public sealed class CalendarImportService : IDisposable
     {
         private const string CredentialFileName = "google-credentials.json";
@@ -58,24 +63,34 @@ namespace DesktopTaskAid.Services
         private readonly string _appDirectory;
         private readonly string _credentialsPath;
         private readonly string _tokenDirectory;
+        private readonly IGoogleCalendarClient _calendarClient;
+        private readonly bool _enableWatcher;
         private readonly object _stateLock = new object();
         private FileSystemWatcher _watcher;
         private CredentialState _credentialState;
 
         public event EventHandler CredentialsChanged;
 
-        public CalendarImportService(StorageService storageService)
+        public CalendarImportService(StorageService storageService, IGoogleCalendarClient calendarClient = null, string appDirectory = null, bool enableWatcher = true)
         {
             _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
-            _appDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            _calendarClient = calendarClient ?? new GoogleCalendarClient();
+            _appDirectory = string.IsNullOrWhiteSpace(appDirectory)
+                ? AppDomain.CurrentDomain.BaseDirectory
+                : appDirectory;
             _credentialsPath = Path.Combine(_appDirectory, CredentialFileName);
             _tokenDirectory = Path.Combine(_storageService.GetDataFolderPath(), "GoogleOAuth");
+            _enableWatcher = enableWatcher;
 
+            Directory.CreateDirectory(_appDirectory);
             Directory.CreateDirectory(_tokenDirectory);
 
             _credentialState = ValidateCredentialFile();
 
-            InitializeWatcher();
+            if (_enableWatcher)
+            {
+                InitializeWatcher();
+            }
         }
 
         public CredentialState GetCredentialState()
@@ -164,17 +179,15 @@ namespace DesktopTaskAid.Services
             {
                 using (var stream = new FileStream(_credentialsPath, FileMode.Open, FileAccess.Read, FileShare.Read))
                 {
-                    var secrets = await GoogleClientSecrets.FromStreamAsync(stream, cancellationToken).ConfigureAwait(false);
+                    var now = DateTime.Now;
+                    var nextMonthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Local).AddMonths(1);
+                    var nextMonthEnd = nextMonthStart.AddMonths(1);
 
-                    var dataStore = new FileDataStore(_tokenDirectory, true);
-                    var credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
-                        secrets.Secrets,
-                        Scopes,
-                        "desktop-user",
-                        cancellationToken,
-                        dataStore).ConfigureAwait(false);
+                    var events = await _calendarClient
+                        .FetchEventsAsync(stream, _tokenDirectory, nextMonthStart, nextMonthEnd, cancellationToken)
+                        .ConfigureAwait(false);
 
-                    if (credential == null)
+                    if (events == null)
                     {
                         return new CalendarImportResult
                         {
@@ -183,34 +196,13 @@ namespace DesktopTaskAid.Services
                         };
                     }
 
-                    var service = new CalendarService(new BaseClientService.Initializer
-                    {
-                        HttpClientInitializer = credential,
-                        ApplicationName = ApplicationName
-                    });
-
-                    var now = DateTime.Now;
-                    var nextMonthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Local).AddMonths(1);
-                    var nextMonthEnd = nextMonthStart.AddMonths(1);
-
-                    var request = service.Events.List("primary");
-                    request.TimeMin = nextMonthStart;
-                    request.TimeMax = nextMonthEnd;
-                    request.SingleEvents = true;
-                    request.ShowDeleted = false;
-                    request.OrderBy = EventsResource.ListRequest.OrderByEnum.StartTime;
-                    request.MaxResults = 2500;
-                    request.TimeZone = TimeZoneInfo.Local.Id;
-
-                    var response = await request.ExecuteAsync(cancellationToken).ConfigureAwait(false);
-                    var events = response?.Items ?? new List<Event>();
-
-                    if (events.Count == 0)
+                    var eventList = events.ToList();
+                    if (eventList.Count == 0)
                     {
                         return new CalendarImportResult { Outcome = CalendarImportOutcome.NoEvents };
                     }
 
-                    var tasks = events
+                    var tasks = eventList
                         .Select(ConvertToTaskItem)
                         .Where(t => t != null)
                         .ToList();
@@ -753,6 +745,45 @@ namespace DesktopTaskAid.Services
             public DateTime? Date { get; }
             public TimeSpan? Time { get; }
             public bool IsAllDay { get; }
+        }
+
+        private sealed class GoogleCalendarClient : IGoogleCalendarClient
+        {
+            public async Task<IList<Event>> FetchEventsAsync(Stream credentialStream, string tokenDirectory, DateTime timeMin, DateTime timeMax, CancellationToken cancellationToken)
+            {
+                var secrets = await GoogleClientSecrets.FromStreamAsync(credentialStream, cancellationToken).ConfigureAwait(false);
+
+                var dataStore = new FileDataStore(tokenDirectory, true);
+                var credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
+                    secrets.Secrets,
+                    Scopes,
+                    "desktop-user",
+                    cancellationToken,
+                    dataStore).ConfigureAwait(false);
+
+                if (credential == null)
+                {
+                    return null;
+                }
+
+                var service = new CalendarService(new BaseClientService.Initializer
+                {
+                    HttpClientInitializer = credential,
+                    ApplicationName = ApplicationName
+                });
+
+                var request = service.Events.List("primary");
+                request.TimeMin = timeMin;
+                request.TimeMax = timeMax;
+                request.SingleEvents = true;
+                request.ShowDeleted = false;
+                request.OrderBy = EventsResource.ListRequest.OrderByEnum.StartTime;
+                request.MaxResults = 2500;
+                request.TimeZone = TimeZoneInfo.Local.Id;
+
+                var response = await request.ExecuteAsync(cancellationToken).ConfigureAwait(false);
+                return response?.Items ?? new List<Event>();
+            }
         }
     }
 }

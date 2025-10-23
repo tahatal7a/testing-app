@@ -37,6 +37,23 @@ namespace DesktopTaskAid.Services
             LoggingService.Log($"State file path: {_stateFilePath}");
         }
 
+        public StorageService(string dataFolderPath, bool ensureDirectoryExists = true)
+        {
+            if (string.IsNullOrWhiteSpace(dataFolderPath))
+            {
+                throw new ArgumentException("Data folder path must be provided.", nameof(dataFolderPath));
+            }
+
+            _dataFolder = dataFolderPath;
+
+            if (ensureDirectoryExists && !Directory.Exists(_dataFolder))
+            {
+                Directory.CreateDirectory(_dataFolder);
+            }
+
+            _stateFilePath = Path.Combine(_dataFolder, "appState.json");
+        }
+
         public AppState LoadState()
         {
             LoggingService.Log("LoadState called");
