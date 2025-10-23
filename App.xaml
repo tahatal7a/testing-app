@@ -1,0 +1,29 @@
+<Application x:Class="DesktopTaskAid.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:DesktopTaskAid.Converters"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/lightTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Converters -->
+            <converters:DateFormatConverter x:Key="DateFormatConverter"/>
+            <converters:TimeFormatConverter x:Key="TimeFormatConverter"/>
+            <converters:ReminderStatusToBrushConverter x:Key="ReminderStatusToBrushConverter"/>
+            <converters:ReminderStatusToTextColorConverter x:Key="ReminderStatusToTextColorConverter"/>
+            <converters:SecondsToTimerDisplayConverter x:Key="SecondsToTimerDisplayConverter"/>
+            <converters:SecondsToDurationConverter x:Key="SecondsToDurationConverter"/>
+            <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <converters:CalendarDayTagConverter x:Key="CalendarDayTagConverter"/>
+
+            <!-- Global Styles -->
+            <Style TargetType="Window">
+                <Setter Property="FontFamily" Value="Segoe UI, Arial"/>
+                <Setter Property="FontSize" Value="14"/>
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
