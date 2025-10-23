@@ -21,6 +21,7 @@ namespace DesktopTaskAid.ViewModels
         private readonly CalendarImportService _calendarImportService;
         private readonly DispatcherTimer _timerTick;
         private readonly RelayCommand _importNextMonthCommand;
+        private readonly RelayCommand _openImportModalCommand;
         private AppState _state;
 
         // Event for theme changes
@@ -233,6 +234,7 @@ namespace DesktopTaskAid.ViewModels
                 if (SetProperty(ref _isImportRunning, value))
                 {
                     _importNextMonthCommand?.RaiseCanExecuteChanged();
+                    _openImportModalCommand?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -248,6 +250,13 @@ namespace DesktopTaskAid.ViewModels
                     _importNextMonthCommand?.RaiseCanExecuteChanged();
                 }
             }
+        }
+
+        private bool _isCalendarImportModalOpen;
+        public bool IsCalendarImportModalOpen
+        {
+            get => _isCalendarImportModalOpen;
+            set => SetProperty(ref _isCalendarImportModalOpen, value);
         }
 
         #endregion
@@ -269,6 +278,8 @@ namespace DesktopTaskAid.ViewModels
         public ICommand NextPageCommand { get; }
         public ICommand ImportNextMonthCommand => _importNextMonthCommand;
         public ICommand CreateGoogleAccountCommand { get; }
+        public ICommand OpenCalendarImportModalCommand => _openImportModalCommand;
+        public ICommand CloseCalendarImportModalCommand { get; }
 
         #endregion
 
@@ -324,7 +335,9 @@ namespace DesktopTaskAid.ViewModels
                 CloseModalCommand = new RelayCommand(_ => CloseModal());
                 PreviousPageCommand = new RelayCommand(_ => ChangePage(-1), _ => CurrentPage > 1);
                 NextPageCommand = new RelayCommand(_ => ChangePage(1), _ => CanGoNextPage());
-                _importNextMonthCommand = new RelayCommand(async _ => await RunImportAsync(), _ => HasValidCredentials && !IsImportRunning);
+                _openImportModalCommand = new RelayCommand(_ => OpenCalendarImportModal(), _ => !IsImportRunning);
+                _importNextMonthCommand = new RelayCommand(async _ => await RunImportAsync(), _ => !IsImportRunning);
+                CloseCalendarImportModalCommand = new RelayCommand(_ => CloseCalendarImportModal());
                 CreateGoogleAccountCommand = new RelayCommand(_ => OpenGoogleAccountPage());
                 LoggingService.Log("Commands initialized");
 
@@ -751,6 +764,21 @@ namespace DesktopTaskAid.ViewModels
             return false;
         }
 
+        private void OpenCalendarImportModal()
+        {
+            if (IsImportRunning)
+            {
+                return;
+            }
+
+            IsCalendarImportModalOpen = true;
+        }
+
+        private void CloseCalendarImportModal()
+        {
+            IsCalendarImportModalOpen = false;
+        }
+
         private async Task RunImportAsync()
         {
             if (IsImportRunning)
@@ -761,6 +789,11 @@ namespace DesktopTaskAid.ViewModels
             try
             {
                 LoggingService.Log("ImportNextMonth command started");
+
+                if (IsCalendarImportModalOpen)
+                {
+                    CloseCalendarImportModal();
+                }
 
                 if (!await EnsureCredentialsAvailableAsync())
                 {

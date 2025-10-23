@@ -328,15 +328,12 @@
                                         <TextBlock Text="{Binding ImportStatusMessage}" FontSize="12"
                                                    Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
                                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                            <Button Content="Import Next Month" Command="{Binding ImportNextMonthCommand}"
-                                                    Style="{StaticResource PrimaryButtonStyle}" Height="40" MinWidth="180"
-                                                    Cursor="Hand" FocusVisualStyle="{x:Null}"/>
-                                            <TextBlock Margin="16,8,0,0" FontSize="12" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center">
-                                                <Run Text="Need a Google account? "/>
-                                                <Hyperlink Command="{Binding CreateGoogleAccountCommand}" Foreground="{DynamicResource Accent}">
-                                                    Create Google Account
-                                                </Hyperlink>
-                                            </TextBlock>
+                                            <TextBlock Text="Already using another calendar?" FontSize="12"
+                                                       Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+                                            <Button Content="Sync now" Background="Transparent" BorderThickness="0"
+                                                    FontSize="12" FontWeight="Medium" Foreground="{DynamicResource Accent}" Margin="4,0,0,0"
+                                                    Cursor="Hand" Command="{Binding OpenCalendarImportModalCommand}"
+                                                    FocusVisualStyle="{x:Null}"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
@@ -825,6 +822,36 @@
             </Border>
         </Grid>
 
-        
+        <!-- Calendar Import Modal -->
+        <Grid Grid.RowSpan="2" Background="#70000000" Visibility="{Binding IsCalendarImportModalOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="{DynamicResource Surface}" Width="420" MinHeight="220" CornerRadius="20"
+                    BorderBrush="{DynamicResource Border}" BorderThickness="1" Padding="32">
+                <StackPanel>
+                    <Grid Margin="0,0,0,24">
+                        <TextBlock Text="Sync your Google Calendar" FontSize="18" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimary}"/>
+                        <Button Width="32" Height="32" HorizontalAlignment="Right" Background="Transparent" BorderThickness="0"
+                                Command="{Binding CloseCalendarImportModalCommand}"
+                                FocusVisualStyle="{x:Null}" Cursor="Hand">
+                            <Viewbox Width="16" Height="16">
+                                <Canvas Width="24" Height="24">
+                                    <Path Data="M18 6L6 18M6 6l12 12" Stroke="{DynamicResource TextSecondary}" StrokeThickness="2"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
+                    </Grid>
+
+                    <TextBlock Text="Click Import to sign in with your Google account and sync next month's events." FontSize="14"
+                               Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,0,0,24"/>
+
+                    <Button Content="Import" Command="{Binding ImportNextMonthCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}" Height="44" MinWidth="160"
+                            HorizontalAlignment="Right" Cursor="Hand" FocusVisualStyle="{x:Null}"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+
     </Grid>
 </Window>
