@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "dgSpecHash": "bOrtiQ/5UZA=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\talha\\.nuget\\packages\\coverlet.collector\\6.0.0\\coverlet.collector.6.0.0.nupkg.sha512",
+    "C:\\Users\\talha\\.nuget\\packages\\google.apis\\1.72.0\\google.apis.1.72.0.nupkg.sha512",
+    "C:\\Users\\talha\\.nuget\\packages\\google.apis.auth\\1.72.0\\google.apis.auth.1.72.0.nupkg.sha512",
+    "C:\\Users\\talha\\.nuget\\packages\\google.apis.calendar.v3\\1.69.0.3746\\google.apis.calendar.v3.1.69.0.3746.nupkg.sha512",
+    "C:\\Users\\talha\\.nuget\\packages\\google.apis.core\\1.72.0\\google.apis.core.1.72.0.nupkg.sha512",
+    "C:\\Users\\talha\\.nuget\\packages\\microsoft.codecoverage\\18.0.0\\microsoft.codecoverage.18.0.0.nupkg.sha512",
+    "C:\\Users\\talha\\.nuget\\packages\\microsoft.net.test.sdk\\17.10.0\\microsoft.net.test.sdk.17.10.0.nupkg.sha512",
+    "C:\\Users\\talha\\.nuget\\packages\\newtonsoft.json\\13.0.4\\newtonsoft.json.13.0.4.nupkg.sha512",
+    "C:\\Users\\talha\\.nuget\\packages\\nunit\\3.13.3\\nunit.3.13.3.nupkg.sha512",
+    "C:\\Users\\talha\\.nuget\\packages\\nunit3testadapter\\4.5.0\\nunit3testadapter.4.5.0.nupkg.sha512"
+  ],
+  "logs": []
+}

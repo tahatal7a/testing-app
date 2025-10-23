@@ -312,23 +312,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\yassi\\.nuget\\packages\\": {},
+    "C:\\Users\\talha\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\yassi\\OneDrive\\Desktop\\test-app-main\\DesktopTaskAid.csproj",
+      "projectUniqueName": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.csproj",
       "projectName": "DesktopTaskAid",
-      "projectPath": "C:\\Users\\yassi\\OneDrive\\Desktop\\test-app-main\\DesktopTaskAid.csproj",
-      "packagesPath": "C:\\Users\\yassi\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\yassi\\OneDrive\\Desktop\\test-app-main\\obj\\",
+      "projectPath": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.csproj",
+      "packagesPath": "C:\\Users\\talha\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\yassi\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\talha\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],

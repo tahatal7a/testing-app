@@ -1,11 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Threading;
-using System.Threading.Tasks;
 using DesktopTaskAid.Models;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Responses;
@@ -14,6 +6,14 @@ using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Services;
 using Google.Apis.Util.Store;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DesktopTaskAid.Services
 {
