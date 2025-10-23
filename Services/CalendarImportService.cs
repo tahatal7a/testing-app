@@ -468,6 +468,12 @@ namespace DesktopTaskAid.Services
         {
             if (!File.Exists(_credentialsPath))
             {
+                var autoImportState = TryAutoImportCredentials();
+                if (autoImportState != null)
+                {
+                    return autoImportState;
+                }
+
                 return new CredentialState
                 {
                     Status = CredentialStatus.Missing,
@@ -502,6 +508,98 @@ namespace DesktopTaskAid.Services
                     Message = "We couldn't read google-credentials.json. Choose the file again."
                 };
             }
+        }
+
+        private CredentialState TryAutoImportCredentials()
+        {
+            var candidatePath = FindCredentialFileCandidate();
+            if (string.IsNullOrEmpty(candidatePath))
+            {
+                return null;
+            }
+
+            try
+            {
+                var json = File.ReadAllText(candidatePath);
+                if (!ValidateCredentialJson(json, out var validationMessage))
+                {
+                    return new CredentialState
+                    {
+                        Status = CredentialStatus.Invalid,
+                        Message = validationMessage
+                    };
+                }
+
+                File.WriteAllText(_credentialsPath, json);
+                ClearCachedTokens();
+
+                return new CredentialState
+                {
+                    Status = CredentialStatus.Valid,
+                    Message = "google-credentials.json found. Click Import Next Month to continue."
+                };
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError("Failed to automatically import google-credentials.json", ex);
+                return new CredentialState
+                {
+                    Status = CredentialStatus.Invalid,
+                    Message = "We couldn't read google-credentials.json. Choose the file again."
+                };
+            }
+        }
+
+        private string FindCredentialFileCandidate()
+        {
+            try
+            {
+                var directory = new DirectoryInfo(_appDirectory);
+                for (var depth = 0; depth < 5 && directory != null; depth++)
+                {
+                    var exactPath = Path.Combine(directory.FullName, CredentialFileName);
+                    if (File.Exists(exactPath))
+                    {
+                        return exactPath;
+                    }
+
+                    var alternate = GetAlternateCredentialPath(directory.FullName);
+                    if (!string.IsNullOrEmpty(alternate))
+                    {
+                        return alternate;
+                    }
+
+                    directory = directory.Parent;
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError("Failed to search for google-credentials.json automatically", ex);
+            }
+
+            return null;
+        }
+
+        private static string GetAlternateCredentialPath(string directory)
+        {
+            try
+            {
+                var files = Directory.GetFiles(directory, CredentialFileName + "*", SearchOption.TopDirectoryOnly);
+                foreach (var file in files)
+                {
+                    var fileName = Path.GetFileName(file);
+                    if (fileName != null && fileName.StartsWith(CredentialFileName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return file;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError("Failed to enumerate potential credential files", ex);
+            }
+
+            return null;
         }
 
         private bool ValidateCredentialJson(string json, out string message)
