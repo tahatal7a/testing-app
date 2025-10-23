@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -11,13 +11,16 @@ using System.Windows.Threading;
 using DesktopTaskAid.Helpers;
 using DesktopTaskAid.Models;
 using DesktopTaskAid.Services;
+using Microsoft.Win32;
 
 namespace DesktopTaskAid.ViewModels
 {
     public class MainViewModel : ViewModelBase
     {
         private readonly StorageService _storageService;
+        private readonly CalendarImportService _calendarImportService;
         private readonly DispatcherTimer _timerTick;
+        private readonly RelayCommand _importNextMonthCommand;
         private AppState _state;
 
         // Event for theme changes
@@ -214,25 +217,37 @@ namespace DesktopTaskAid.ViewModels
             set => SetProperty(ref _modalTitle, value);
         }
 
-        private bool _isSyncModalOpen;
-        public bool IsSyncModalOpen
+        private string _importStatusMessage;
+        public string ImportStatusMessage
         {
-            get => _isSyncModalOpen;
-            set => SetProperty(ref _isSyncModalOpen, value);
+            get => _importStatusMessage;
+            set => SetProperty(ref _importStatusMessage, value);
         }
 
-        private bool _isCalendarUrlModalOpen;
-        public bool IsCalendarUrlModalOpen
+        private bool _isImportRunning;
+        public bool IsImportRunning
         {
-            get => _isCalendarUrlModalOpen;
-            set => SetProperty(ref _isCalendarUrlModalOpen, value);
+            get => _isImportRunning;
+            private set
+            {
+                if (SetProperty(ref _isImportRunning, value))
+                {
+                    _importNextMonthCommand?.RaiseCanExecuteChanged();
+                }
+            }
         }
 
-        private string _syncUrl;
-        public string SyncUrl
+        private bool _hasValidCredentials;
+        public bool HasValidCredentials
         {
-            get => _syncUrl;
-            set => SetProperty(ref _syncUrl, value);
+            get => _hasValidCredentials;
+            private set
+            {
+                if (SetProperty(ref _hasValidCredentials, value))
+                {
+                    _importNextMonthCommand?.RaiseCanExecuteChanged();
+                }
+            }
         }
 
         #endregion
@@ -252,11 +267,8 @@ namespace DesktopTaskAid.ViewModels
         public ICommand CloseModalCommand { get; }
         public ICommand PreviousPageCommand { get; }
         public ICommand NextPageCommand { get; }
-        public ICommand OpenSyncModalCommand { get; }
-        public ICommand CloseSyncModalCommand { get; }
-        public ICommand OpenCalendarUrlModalCommand { get; }
-        public ICommand CloseCalendarUrlModalCommand { get; }
-        public ICommand ImportSyncUrlCommand { get; }
+        public ICommand ImportNextMonthCommand => _importNextMonthCommand;
+        public ICommand CreateGoogleAccountCommand { get; }
 
         #endregion
 
@@ -268,6 +280,8 @@ namespace DesktopTaskAid.ViewModels
             {
                 LoggingService.Log("Creating StorageService");
                 _storageService = new StorageService();
+                _calendarImportService = new CalendarImportService(_storageService);
+                _calendarImportService.CredentialsChanged += CalendarImportServiceOnCredentialsChanged;
                 
                 LoggingService.Log("Loading application state");
                 _state = _storageService.LoadState();
@@ -310,11 +324,8 @@ namespace DesktopTaskAid.ViewModels
                 CloseModalCommand = new RelayCommand(_ => CloseModal());
                 PreviousPageCommand = new RelayCommand(_ => ChangePage(-1), _ => CurrentPage > 1);
                 NextPageCommand = new RelayCommand(_ => ChangePage(1), _ => CanGoNextPage());
-                OpenSyncModalCommand = new RelayCommand(_ => OpenSyncModal());
-                CloseSyncModalCommand = new RelayCommand(_ => CloseSyncModal());
-                OpenCalendarUrlModalCommand = new RelayCommand(_ => OpenCalendarUrlModal());
-                CloseCalendarUrlModalCommand = new RelayCommand(_ => CloseCalendarUrlModal());
-                ImportSyncUrlCommand = new RelayCommand(_ => ImportSyncUrl());
+                _importNextMonthCommand = new RelayCommand(async _ => await RunImportAsync(), _ => HasValidCredentials && !IsImportRunning);
+                CreateGoogleAccountCommand = new RelayCommand(_ => OpenGoogleAccountPage());
                 LoggingService.Log("Commands initialized");
 
                 // Setup timer
@@ -339,7 +350,9 @@ namespace DesktopTaskAid.ViewModels
                 
                 RefreshDisplayedTasks();
                 LoggingService.Log($"RefreshDisplayedTasks completed - DisplayedTasks count: {DisplayedTasks.Count}");
-                
+
+                ApplyCredentialState(_calendarImportService.GetCredentialState());
+
                 LoggingService.Log("=== MainViewModel Constructor COMPLETED SUCCESSFULLY ===");
             }
             catch (Exception ex)
@@ -687,329 +700,303 @@ namespace DesktopTaskAid.ViewModels
             EditingTask = null;
         }
 
-        private void OpenSyncModal()
+        private void CalendarImportServiceOnCredentialsChanged(object sender, EventArgs e)
         {
-            SyncUrl = string.Empty;
-            IsSyncModalOpen = true;
+            var dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
+            dispatcher.Invoke(() => ApplyCredentialState(_calendarImportService.GetCredentialState()));
         }
 
-        private void CloseSyncModal()
+        private void ApplyCredentialState(CredentialState state)
         {
-            IsSyncModalOpen = false;
-            SyncUrl = string.Empty;
-        }
-
-        private async void ImportSyncUrl()
-        {
-            if (string.IsNullOrWhiteSpace(SyncUrl))
+            if (state == null)
             {
-                MessageBox.Show("Please enter a calendar URL.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            var trimmedUrl = SyncUrl.Trim();
-            SyncUrl = trimmedUrl;
-            if (!Uri.TryCreate(trimmedUrl, UriKind.Absolute, out var uri) ||
-                (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            HasValidCredentials = state.Status == CredentialStatus.Valid;
+            ImportStatusMessage = state.Message;
+        }
+
+        private async Task<bool> EnsureCredentialsAvailableAsync()
+        {
+            var state = _calendarImportService.GetCredentialState();
+            ApplyCredentialState(state);
+
+            if (state.Status == CredentialStatus.Valid)
             {
-                MessageBox.Show("Please provide a valid web address to your calendar.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return true;
+            }
+
+            return await PromptForCredentialsAsync();
+        }
+
+        private async Task<bool> PromptForCredentialsAsync()
+        {
+            var dialog = new OpenFileDialog
+            {
+                Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                Title = "Select google-credentials.json"
+            };
+
+            var result = dialog.ShowDialog();
+            if (result == true)
+            {
+                ImportStatusMessage = "Validating google-credentials.json...";
+                var state = await _calendarImportService.ImportCredentialsAsync(dialog.FileName);
+                ApplyCredentialState(state);
+                return state.Status == CredentialStatus.Valid;
+            }
+
+            ImportStatusMessage = "Import canceled. Select google-credentials.json to continue.";
+            return false;
+        }
+
+        private async Task RunImportAsync()
+        {
+            if (IsImportRunning)
+            {
                 return;
             }
 
             try
             {
-                LoggingService.Log($"Starting calendar import from URL: {uri}");
+                LoggingService.Log("ImportNextMonth command started");
 
-                var importedTasks = await FetchCalendarTasksAsync(uri.ToString());
-                if (importedTasks.Count == 0)
+                if (!await EnsureCredentialsAvailableAsync())
                 {
-                    MessageBox.Show("We couldn't find any events at that address. Please double-check the link and try again.", "Sync Calendar", MessageBoxButton.OK, MessageBoxImage.Information);
+                    LoggingService.Log("ImportNextMonth canceled - credentials not available");
                     return;
                 }
 
-                var added = 0;
-                var updated = 0;
+                IsImportRunning = true;
+                ImportStatusMessage = "Connecting to Google Calendar...";
+                LoggingService.Log("Calling CalendarImportService.RunImportAsync");
 
-                foreach (var imported in importedTasks)
+                var result = await _calendarImportService.RunImportAsync();
+                await HandleImportResultAsync(result);
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError("Unexpected error during Google Calendar import", ex);
+                ImportStatusMessage = "We couldn't import your Google Calendar. Please try again.";
+            }
+            finally
+            {
+                IsImportRunning = false;
+            }
+        }
+
+        private Task HandleImportResultAsync(CalendarImportResult result)
+        {
+            if (result == null)
+            {
+                ImportStatusMessage = "We couldn't import your Google Calendar. Please try again.";
+                return Task.CompletedTask;
+            }
+
+            switch (result.Outcome)
+            {
+                case CalendarImportOutcome.Success:
+                    var mergeResult = MergeImportedTasks(result.Tasks);
+                    ImportStatusMessage = BuildImportSummaryMessage(mergeResult);
+                    break;
+                case CalendarImportOutcome.NoEvents:
+                    ImportStatusMessage = "No Google Calendar events were found for next month.";
+                    break;
+                case CalendarImportOutcome.Cancelled:
+                    ImportStatusMessage = "Sign-in canceled. Run Import Next Month when you're ready.";
+                    break;
+                case CalendarImportOutcome.AccessBlocked:
+                    ImportStatusMessage = "Google blocked the request. Add your account as a test user on the OAuth consent screen.";
+                    break;
+                case CalendarImportOutcome.MissingCredentials:
+                case CalendarImportOutcome.InvalidCredentials:
+                    ApplyCredentialState(_calendarImportService.GetCredentialState());
+                    ImportStatusMessage = result.ErrorMessage;
+                    break;
+                default:
+                    ImportStatusMessage = string.IsNullOrWhiteSpace(result.ErrorMessage)
+                        ? "We couldn't import your Google Calendar. Please try again."
+                        : result.ErrorMessage;
+                    break;
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private MergeResult MergeImportedTasks(IEnumerable<TaskItem> importedTasks)
+        {
+            if (importedTasks == null)
+            {
+                return new MergeResult(0, 0, 0);
+            }
+
+            var added = 0;
+            var updated = 0;
+            var duplicates = 0;
+
+            foreach (var imported in importedTasks)
+            {
+                if (imported == null || string.IsNullOrWhiteSpace(imported.Name))
                 {
-                    if (imported == null || string.IsNullOrWhiteSpace(imported.Name))
-                    {
-                        continue;
-                    }
+                    continue;
+                }
 
-                    TaskItem existing = null;
+                TaskItem existing = null;
 
-                    if (!string.IsNullOrWhiteSpace(imported.ExternalId))
-                    {
-                        existing = AllTasks.FirstOrDefault(t =>
-                            !string.IsNullOrWhiteSpace(t.ExternalId) &&
-                            string.Equals(t.ExternalId, imported.ExternalId, StringComparison.OrdinalIgnoreCase));
-                    }
+                if (!string.IsNullOrWhiteSpace(imported.ExternalId))
+                {
+                    existing = AllTasks.FirstOrDefault(t =>
+                        !string.IsNullOrWhiteSpace(t.ExternalId) &&
+                        string.Equals(t.ExternalId, imported.ExternalId, StringComparison.OrdinalIgnoreCase));
+                }
 
-                    if (existing == null)
-                    {
-                        existing = AllTasks.FirstOrDefault(t =>
-                            string.Equals(t.Name, imported.Name, StringComparison.OrdinalIgnoreCase) &&
-                            Nullable.Equals(t.DueDate, imported.DueDate) &&
-                            Nullable.Equals(t.DueTime, imported.DueTime));
-                    }
+                if (existing == null)
+                {
+                    existing = AllTasks.FirstOrDefault(t =>
+                        string.Equals(t.Name, imported.Name, StringComparison.OrdinalIgnoreCase) &&
+                        Nullable.Equals(t.DueDate, imported.DueDate) &&
+                        Nullable.Equals(t.DueTime, imported.DueTime));
+                }
 
-                    if (existing != null)
+                if (existing != null)
+                {
+                    if (ApplyImportedValues(existing, imported))
                     {
-                        existing.Name = imported.Name;
-                        existing.DueDate = imported.DueDate;
-                        existing.DueTime = imported.DueTime;
-                        existing.ReminderStatus = imported.ReminderStatus;
-                        existing.ReminderLabel = imported.ReminderLabel;
-                        existing.ExternalId = imported.ExternalId;
                         updated++;
                     }
                     else
                     {
-                        AllTasks.Add(imported);
-                        added++;
+                        duplicates++;
                     }
+
+                    continue;
                 }
 
-                _state.Tasks = AllTasks.ToList();
-                SaveState();
+                AllTasks.Add(imported);
+                added++;
+            }
 
-                RefreshUpcomingTask();
-                GenerateCalendarDays();
-                RefreshDailyTasks();
-                RefreshDisplayedTasks();
+            _state.Tasks = AllTasks.ToList();
+            SaveState();
 
-                CloseCalendarUrlModal();
+            RefreshUpcomingTask();
+            GenerateCalendarDays();
+            RefreshDailyTasks();
+            RefreshDisplayedTasks();
 
-                LoggingService.Log($"Calendar import completed. Added: {added}, Updated: {updated}");
+            LoggingService.Log($"Google import merge result - Added: {added}, Updated: {updated}, Duplicates: {duplicates}");
 
-                var message = added == 0 && updated == 0
-                    ? "Your tasks are already up to date with the calendar."
-                    : $"Calendar import complete. Added {added} and updated {updated} events.";
+            return new MergeResult(added, updated, duplicates);
+        }
 
-                MessageBox.Show(message, "Sync Calendar", MessageBoxButton.OK, MessageBoxImage.Information);
+        private bool ApplyImportedValues(TaskItem existing, TaskItem imported)
+        {
+            var changed = false;
+
+            if (!string.Equals(existing.Name, imported.Name, StringComparison.Ordinal))
+            {
+                existing.Name = imported.Name;
+                changed = true;
+            }
+
+            if (!Nullable.Equals(existing.DueDate, imported.DueDate))
+            {
+                existing.DueDate = imported.DueDate;
+                changed = true;
+            }
+
+            if (!Nullable.Equals(existing.DueTime, imported.DueTime))
+            {
+                existing.DueTime = imported.DueTime;
+                changed = true;
+            }
+
+            if (!string.Equals(existing.ReminderStatus, imported.ReminderStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                existing.ReminderStatus = imported.ReminderStatus;
+                changed = true;
+            }
+
+            if (!string.Equals(existing.ReminderLabel, imported.ReminderLabel, StringComparison.Ordinal))
+            {
+                existing.ReminderLabel = imported.ReminderLabel;
+                changed = true;
+            }
+
+            if (!string.Equals(existing.ExternalId, imported.ExternalId, StringComparison.OrdinalIgnoreCase))
+            {
+                existing.ExternalId = imported.ExternalId;
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        private string BuildImportSummaryMessage(MergeResult mergeResult)
+        {
+            if (!mergeResult.HasChanges && mergeResult.Duplicates > 0)
+            {
+                return $"You're already up to date. Skipped {mergeResult.Duplicates} duplicate {(mergeResult.Duplicates == 1 ? "event" : "events")}.";
+            }
+
+            if (!mergeResult.HasChanges)
+            {
+                return "No new Google Calendar events to import for next month.";
+            }
+
+            var parts = new List<string>();
+
+            if (mergeResult.Added > 0)
+            {
+                parts.Add($"{mergeResult.Added} new {(mergeResult.Added == 1 ? "event" : "events")}");
+            }
+
+            if (mergeResult.Updated > 0)
+            {
+                parts.Add($"{mergeResult.Updated} {(mergeResult.Updated == 1 ? "task updated" : "tasks updated")}");
+            }
+
+            if (mergeResult.Duplicates > 0)
+            {
+                parts.Add($"{mergeResult.Duplicates} duplicate{(mergeResult.Duplicates == 1 ? string.Empty : "s")} skipped");
+            }
+
+            return $"Import complete: {string.Join(", ", parts)}.";
+        }
+
+        private void OpenGoogleAccountPage()
+        {
+            const string signupUrl = "https://accounts.google.com/signup";
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = signupUrl,
+                    UseShellExecute = true
+                });
             }
             catch (Exception ex)
             {
-                LoggingService.LogError("Failed to import calendar", ex);
-                MessageBox.Show("We couldn't import your calendar. Please verify the URL and try again.", "Sync Calendar", MessageBoxButton.OK, MessageBoxImage.Error);
+                LoggingService.LogError("Failed to open Google account sign-up page", ex);
+                MessageBox.Show($"We couldn't open the sign-up page automatically. Visit {signupUrl} in your browser.", "Google Calendar", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
-        private void OpenCalendarUrlModal()
+        private readonly struct MergeResult
         {
-            SyncUrl = string.Empty;
-            IsCalendarUrlModalOpen = true;
-        }
-
-        private void CloseCalendarUrlModal()
-        {
-            IsCalendarUrlModalOpen = false;
-            SyncUrl = string.Empty;
-        }
-
-        private async Task<List<TaskItem>> FetchCalendarTasksAsync(string url)
-        {
-            using (var httpClient = new HttpClient())
+            public MergeResult(int added, int updated, int duplicates)
             {
-                httpClient.Timeout = TimeSpan.FromSeconds(15);
-                var response = await httpClient.GetAsync(url);
-                response.EnsureSuccessStatusCode();
-
-                var content = await response.Content.ReadAsStringAsync();
-                return ParseCalendarEvents(content);
-            }
-        }
-
-        private List<TaskItem> ParseCalendarEvents(string icsContent)
-        {
-            var tasks = new List<TaskItem>();
-
-            if (string.IsNullOrWhiteSpace(icsContent))
-            {
-                return tasks;
+                Added = added;
+                Updated = updated;
+                Duplicates = duplicates;
             }
 
-            var lines = UnfoldIcsLines(icsContent);
-
-            TaskItem currentTask = null;
-            DateTime? startDateTime = null;
-            bool isDateOnly = false;
-
-            foreach (var rawLine in lines)
-            {
-                var line = rawLine.Trim();
-                if (string.IsNullOrEmpty(line))
-                {
-                    continue;
-                }
-
-                if (line.StartsWith("BEGIN:VEVENT", StringComparison.OrdinalIgnoreCase))
-                {
-                    currentTask = new TaskItem
-                    {
-                        ReminderStatus = "active"
-                    };
-                    startDateTime = null;
-                    isDateOnly = false;
-                    continue;
-                }
-
-                if (line.StartsWith("END:VEVENT", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (currentTask != null)
-                    {
-                        if (startDateTime.HasValue)
-                        {
-                            currentTask.DueDate = startDateTime.Value.Date;
-                            if (!isDateOnly)
-                            {
-                                currentTask.DueTime = startDateTime.Value.TimeOfDay;
-                            }
-                        }
-
-                        if (string.IsNullOrWhiteSpace(currentTask.Name))
-                        {
-                            currentTask.Name = "Untitled event";
-                        }
-
-                        if (currentTask.DueDate.HasValue && currentTask.DueTime.HasValue)
-                        {
-                            currentTask.ReminderLabel = GetReminderLabelForActive(currentTask);
-                        }
-                        else if (currentTask.DueDate.HasValue)
-                        {
-                            currentTask.ReminderLabel = currentTask.DueDate.Value.ToString("dddd, MMM dd", CultureInfo.InvariantCulture);
-                        }
-                        else
-                        {
-                            currentTask.ReminderLabel = "Active";
-                        }
-
-                        tasks.Add(currentTask);
-                    }
-
-                    currentTask = null;
-                    startDateTime = null;
-                    isDateOnly = false;
-                    continue;
-                }
-
-                if (currentTask == null)
-                {
-                    continue;
-                }
-
-                if (line.StartsWith("SUMMARY", StringComparison.OrdinalIgnoreCase))
-                {
-                    currentTask.Name = DecodeIcsText(ExtractIcsValue(line));
-                }
-                else if (line.StartsWith("UID", StringComparison.OrdinalIgnoreCase))
-                {
-                    currentTask.ExternalId = ExtractIcsValue(line);
-                }
-                else if (line.StartsWith("DTSTART", StringComparison.OrdinalIgnoreCase))
-                {
-                    var parsed = ParseIcsDateTime(line);
-                    startDateTime = parsed.DateTime;
-                    isDateOnly = parsed.IsDateOnly;
-                }
-            }
-
-            return tasks;
-        }
-
-        private static List<string> UnfoldIcsLines(string icsContent)
-        {
-            var normalized = new List<string>();
-            if (string.IsNullOrEmpty(icsContent))
-            {
-                return normalized;
-            }
-
-            var rawLines = icsContent.Replace("\r\n", "\n").Split('\n');
-            foreach (var rawLine in rawLines)
-            {
-                if ((rawLine.StartsWith(" ") || rawLine.StartsWith("\t")) && normalized.Count > 0)
-                {
-                    normalized[normalized.Count - 1] += rawLine.Substring(1);
-                }
-                else
-                {
-                    normalized.Add(rawLine);
-                }
-            }
-
-            return normalized;
-        }
-
-        private static string ExtractIcsValue(string line)
-        {
-            var colonIndex = line.IndexOf(':');
-            return colonIndex >= 0 ? line.Substring(colonIndex + 1).Trim() : string.Empty;
-        }
-
-        private static string DecodeIcsText(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-            {
-                return string.Empty;
-            }
-
-            return value
-                .Replace("\\n", " ")
-                .Replace("\\N", " ")
-                .Replace("\\,", ",")
-                .Replace("\\;", ";")
-                .Replace("\\\\", "\\")
-                .Trim();
-        }
-
-        private (DateTime? DateTime, bool IsDateOnly) ParseIcsDateTime(string line)
-        {
-            var colonIndex = line.IndexOf(':');
-            if (colonIndex < 0)
-            {
-                return (null, false);
-            }
-
-            var metadata = line.Substring(0, colonIndex);
-            var valuePart = line.Substring(colonIndex + 1).Trim();
-            var isDateOnly = metadata.IndexOf("VALUE=DATE", StringComparison.OrdinalIgnoreCase) >= 0 || valuePart.Length == 8;
-
-            if (isDateOnly)
-            {
-                if (DateTime.TryParseExact(valuePart, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOnly))
-                {
-                    return (dateOnly, true);
-                }
-
-                return (null, true);
-            }
-
-            if (valuePart.EndsWith("Z", StringComparison.OrdinalIgnoreCase))
-            {
-                if (DateTime.TryParseExact(valuePart, "yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var utcDateTime))
-                {
-                    return (utcDateTime.ToLocalTime(), false);
-                }
-
-                if (DateTime.TryParseExact(valuePart, "yyyyMMdd'T'HHmm'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out utcDateTime))
-                {
-                    return (utcDateTime.ToLocalTime(), false);
-                }
-            }
-
-            var formats = new[] { "yyyyMMdd'T'HHmmss", "yyyyMMdd'T'HHmm" };
-            foreach (var format in formats)
-            {
-                if (DateTime.TryParseExact(valuePart, format, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var localDateTime))
-                {
-                    return (localDateTime, false);
-                }
-            }
-
-            return (null, false);
+            public int Added { get; }
+            public int Updated { get; }
+            public int Duplicates { get; }
+            public bool HasChanges => Added > 0 || Updated > 0;
         }
 
         private void SaveState()
