@@ -90,7 +90,7 @@ namespace DesktopTaskAid.Services
             }
         }
 
-        public async Task<CredentialState> ImportCredentialsAsync(string sourcePath, CancellationToken cancellationToken = default)
+        public async Task<CredentialState> ImportCredentialsAsync(string sourcePath, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
             {
@@ -103,7 +103,7 @@ namespace DesktopTaskAid.Services
 
             try
             {
-                var json = await File.ReadAllTextAsync(sourcePath, cancellationToken).ConfigureAwait(false);
+                var json = await ReadAllTextAsync(sourcePath, cancellationToken).ConfigureAwait(false);
                 if (!ValidateCredentialJson(json, out var validationMessage))
                 {
                     return UpdateCredentialState(new CredentialState
@@ -113,7 +113,7 @@ namespace DesktopTaskAid.Services
                     });
                 }
 
-                await File.WriteAllTextAsync(_credentialsPath, json, cancellationToken).ConfigureAwait(false);
+                await WriteAllTextAsync(_credentialsPath, json, cancellationToken).ConfigureAwait(false);
                 ClearCachedTokens();
 
                 var message = "Credentials saved. Click Import Next Month to sign in with Google.";
@@ -134,7 +134,7 @@ namespace DesktopTaskAid.Services
             }
         }
 
-        public async Task<CalendarImportResult> RunImportAsync(CancellationToken cancellationToken = default)
+        public async Task<CalendarImportResult> RunImportAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
             CredentialState credentialState;
             lock (_stateLock)
@@ -162,63 +162,65 @@ namespace DesktopTaskAid.Services
 
             try
             {
-                using var stream = new FileStream(_credentialsPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                var secrets = await GoogleClientSecrets.FromStreamAsync(stream, cancellationToken).ConfigureAwait(false);
-
-                var dataStore = new FileDataStore(_tokenDirectory, true);
-                var credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
-                    secrets.Secrets,
-                    Scopes,
-                    "desktop-user",
-                    cancellationToken,
-                    dataStore).ConfigureAwait(false);
-
-                if (credential == null)
+                using (var stream = new FileStream(_credentialsPath, FileMode.Open, FileAccess.Read, FileShare.Read))
                 {
+                    var secrets = await GoogleClientSecrets.FromStreamAsync(stream, cancellationToken).ConfigureAwait(false);
+
+                    var dataStore = new FileDataStore(_tokenDirectory, true);
+                    var credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
+                        secrets.Secrets,
+                        Scopes,
+                        "desktop-user",
+                        cancellationToken,
+                        dataStore).ConfigureAwait(false);
+
+                    if (credential == null)
+                    {
+                        return new CalendarImportResult
+                        {
+                            Outcome = CalendarImportOutcome.Cancelled,
+                            ErrorMessage = "Authorization was canceled."
+                        };
+                    }
+
+                    var service = new CalendarService(new BaseClientService.Initializer
+                    {
+                        HttpClientInitializer = credential,
+                        ApplicationName = ApplicationName
+                    });
+
+                    var now = DateTime.Now;
+                    var nextMonthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Local).AddMonths(1);
+                    var nextMonthEnd = nextMonthStart.AddMonths(1);
+
+                    var request = service.Events.List("primary");
+                    request.TimeMin = nextMonthStart;
+                    request.TimeMax = nextMonthEnd;
+                    request.SingleEvents = true;
+                    request.ShowDeleted = false;
+                    request.OrderBy = EventsResource.ListRequest.OrderByEnum.StartTime;
+                    request.MaxResults = 2500;
+                    request.TimeZone = TimeZoneInfo.Local.Id;
+
+                    var response = await request.ExecuteAsync(cancellationToken).ConfigureAwait(false);
+                    var events = response?.Items ?? new List<Event>();
+
+                    if (events.Count == 0)
+                    {
+                        return new CalendarImportResult { Outcome = CalendarImportOutcome.NoEvents };
+                    }
+
+                    var tasks = events
+                        .Select(ConvertToTaskItem)
+                        .Where(t => t != null)
+                        .ToList();
+
                     return new CalendarImportResult
                     {
-                        Outcome = CalendarImportOutcome.Cancelled,
-                        ErrorMessage = "Authorization was canceled."
+                        Outcome = CalendarImportOutcome.Success,
+                        Tasks = tasks
                     };
                 }
-
-                var service = new CalendarService(new BaseClientService.Initializer
-                {
-                    HttpClientInitializer = credential,
-                    ApplicationName = ApplicationName
-                });
-
-                var now = DateTime.Now;
-                var nextMonthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Local).AddMonths(1);
-                var nextMonthEnd = nextMonthStart.AddMonths(1);
-
-                var request = service.Events.List("primary");
-                request.TimeMin = nextMonthStart;
-                request.TimeMax = nextMonthEnd;
-                request.SingleEvents = true;
-                request.ShowDeleted = false;
-                request.OrderBy = EventsResource.ListRequest.OrderByEnum.StartTime;
-                request.MaxResults = 2500;
-                request.TimeZone = TimeZoneInfo.Local.Id;
-
-                var response = await request.ExecuteAsync(cancellationToken).ConfigureAwait(false);
-                var events = response?.Items ?? new List<Event>();
-
-                if (events.Count == 0)
-                {
-                    return new CalendarImportResult { Outcome = CalendarImportOutcome.NoEvents };
-                }
-
-                var tasks = events
-                    .Select(ConvertToTaskItem)
-                    .Where(t => t != null)
-                    .ToList();
-
-                return new CalendarImportResult
-                {
-                    Outcome = CalendarImportOutcome.Success,
-                    Tasks = tasks
-                };
             }
             catch (TaskCanceledException)
             {
@@ -255,6 +257,24 @@ namespace DesktopTaskAid.Services
                     ErrorMessage = ex.Message
                 };
             }
+        }
+
+        private static Task<string> ReadAllTextAsync(string path, CancellationToken cancellationToken)
+        {
+            return Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return File.ReadAllText(path);
+            }, cancellationToken);
+        }
+
+        private static Task WriteAllTextAsync(string path, string contents, CancellationToken cancellationToken)
+        {
+            return Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                File.WriteAllText(path, contents);
+            }, cancellationToken);
         }
 
         private TaskItem ConvertToTaskItem(Event calendarEvent)
