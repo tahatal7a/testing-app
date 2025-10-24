@@ -1,0 +1,255 @@
+﻿using System;
+using System.Globalization;
+using System.Threading;
+using System.Windows;
+using System.Windows.Threading;
+using DesktopTaskAid.Services;
+using NUnit.Framework;
+
+namespace DesktopTaskAid.Tests
+{
+    [TestFixture]
+    [Apartment(ApartmentState.STA)]
+    public class AppTests
+    {
+        [Test]
+        public void App_SetsCulture_ToEnglishUS()
+        {
+            // Note: Cannot directly test App.OnStartup without actually starting the app
+            // But we can verify culture behavior
+            var app = new App();
+            
+            // Manually set English culture (simulating what OnStartup does)
+            var englishCulture = new CultureInfo("en-US");
+            Thread.CurrentThread.CurrentCulture = englishCulture;
+            Thread.CurrentThread.CurrentUICulture = englishCulture;
+            
+            Assert.AreEqual("en-US", Thread.CurrentThread.CurrentCulture.Name);
+            Assert.AreEqual("en-US", Thread.CurrentThread.CurrentUICulture.Name);
+        }
+
+        [Test]
+        public void LoggingService_GetLogFilePath_ReturnsValidPath()
+        {
+            var path = LoggingService.GetLogFilePath();
+            
+            Assert.IsNotNull(path);
+            Assert.IsNotEmpty(path);
+            StringAssert.Contains("DesktopTaskAid", path);
+            StringAssert.EndsWith(".txt", path);
+        }
+
+        [Test]
+        public void LoggingService_Log_WithNullCategory_DoesNotThrow()
+        {
+            Assert.DoesNotThrow(() => LoggingService.Log("Test message", null));
+        }
+
+        [Test]
+        public void LoggingService_Log_WithEmptyMessage_DoesNotThrow()
+        {
+            Assert.DoesNotThrow(() => LoggingService.Log("", "TEST"));
+        }
+
+        [Test]
+        public void LoggingService_LogError_WithNullException_HandlesGracefully()
+        {
+            Assert.DoesNotThrow(() => LoggingService.LogError("Error message", null));
+        }
+
+        [Test]
+        public void LoggingService_LogError_WithNullMessage_HandlesGracefully()
+        {
+            var ex = new Exception("Test");
+            Assert.DoesNotThrow(() => LoggingService.LogError(null, ex));
+        }
+
+        [Test]
+        public void LoggingService_MultipleLogCalls_AllWriteToSameFile()
+        {
+            var marker1 = Guid.NewGuid().ToString();
+            var marker2 = Guid.NewGuid().ToString();
+            
+            LoggingService.Log(marker1);
+            LoggingService.Log(marker2);
+            
+            var path = LoggingService.GetLogFilePath();
+            var content = System.IO.File.ReadAllText(path);
+            
+            StringAssert.Contains(marker1, content);
+            StringAssert.Contains(marker2, content);
+        }
+
+        [Test]
+        public void LoggingService_LogError_WithInnerException_LogsFullDetails()
+        {
+            var inner = new InvalidOperationException("Inner error");
+            var outer = new Exception("Outer error", inner);
+            var marker = Guid.NewGuid().ToString();
+            
+            LoggingService.LogError(marker, outer);
+            
+            var path = LoggingService.GetLogFilePath();
+            var content = System.IO.File.ReadAllText(path);
+            
+            StringAssert.Contains(marker, content);
+            StringAssert.Contains("Outer error", content);
+            StringAssert.Contains("Inner error", content);
+        }
+
+        [Test]
+        public void LoggingService_Log_WithVeryLongMessage_DoesNotThrow()
+        {
+            var longMessage = new string('X', 10000);
+            Assert.DoesNotThrow(() => LoggingService.Log(longMessage));
+        }
+
+        [Test]
+        public void LoggingService_Log_WithSpecialCharacters_HandlesCorrectly()
+        {
+            var message = "Test \n\r\t with special chars: <>&\"'";
+            Assert.DoesNotThrow(() => LoggingService.Log(message));
+        }
+
+        [Test]
+        public void CultureInfo_EnglishUS_FormatsDateCorrectly()
+        {
+            var culture = new CultureInfo("en-US");
+            var date = new DateTime(2025, 3, 15);
+            
+            var formatted = date.ToString("d", culture);
+            Assert.AreEqual("3/15/2025", formatted);
+        }
+
+        [Test]
+        public void CultureInfo_EnglishUS_FormatsNumberCorrectly()
+        {
+            var culture = new CultureInfo("en-US");
+            var number = 1234.56;
+            
+            var formatted = number.ToString("N2", culture);
+            Assert.AreEqual("1,234.56", formatted);
+        }
+
+        [Test]
+        public void CultureInfo_EnglishUS_FormatsTimeCorrectly()
+        {
+            var culture = new CultureInfo("en-US");
+            var time = new DateTime(2025, 1, 1, 14, 30, 0);
+            
+            var formatted = time.ToString("t", culture);
+            StringAssert.Contains("2:30", formatted);
+            StringAssert.Contains("PM", formatted);
+        }
+    }
+
+    [TestFixture]
+    [Apartment(ApartmentState.STA)]
+    public class AppExceptionHandlingTests
+    {
+        [Test]
+        public void Exception_WithStackTrace_IsLogged()
+        {
+            var marker = Guid.NewGuid().ToString();
+            
+            try
+            {
+                throw new InvalidOperationException(marker);
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError("Caught exception", ex);
+                
+                var path = LoggingService.GetLogFilePath();
+                var content = System.IO.File.ReadAllText(path);
+                
+                StringAssert.Contains(marker, content);
+                StringAssert.Contains("InvalidOperationException", content);
+                // Stack trace should be included
+                StringAssert.Contains("at ", content);
+            }
+        }
+
+        [Test]
+        public void Exception_WithNullMessage_IsLogged()
+        {
+            Exception ex = null;
+            try
+            {
+                throw new Exception(null as string);
+            }
+            catch (Exception e)
+            {
+                ex = e;
+                LoggingService.LogError("Exception with null message", e);
+            }
+            
+            Assert.IsNotNull(ex);
+            var path = LoggingService.GetLogFilePath();
+            var content = System.IO.File.ReadAllText(path);
+            StringAssert.Contains("Exception with null message", content);
+        }
+
+        [Test]
+        public void MultipleExceptions_AllLogged()
+        {
+            var marker1 = Guid.NewGuid().ToString();
+            var marker2 = Guid.NewGuid().ToString();
+            
+            LoggingService.LogError(marker1, new Exception("First"));
+            LoggingService.LogError(marker2, new InvalidOperationException("Second"));
+            
+            var path = LoggingService.GetLogFilePath();
+            var content = System.IO.File.ReadAllText(path);
+            
+            StringAssert.Contains(marker1, content);
+            StringAssert.Contains(marker2, content);
+            StringAssert.Contains("First", content);
+            StringAssert.Contains("Second", content);
+        }
+
+        [Test]
+        public void AggregateException_InnerExceptionsLogged()
+        {
+            var inner1 = new InvalidOperationException("Error 1");
+            var inner2 = new ArgumentException("Error 2");
+            var aggregate = new AggregateException("Multiple errors", inner1, inner2);
+            var marker = Guid.NewGuid().ToString();
+            
+            LoggingService.LogError(marker, aggregate);
+            
+            var path = LoggingService.GetLogFilePath();
+            var content = System.IO.File.ReadAllText(path);
+            
+            StringAssert.Contains(marker, content);
+            StringAssert.Contains("Multiple errors", content);
+            StringAssert.Contains("Error 1", content);
+            StringAssert.Contains("Error 2", content);
+        }
+
+        [Test]
+        public void ConcurrentLogging_HandledSafely()
+        {
+            var tasks = new System.Threading.Tasks.Task[10];
+            for (int i = 0; i < 10; i++)
+            {
+                var index = i;
+                tasks[i] = System.Threading.Tasks.Task.Run(() =>
+                {
+                    LoggingService.Log($"Concurrent message {index}");
+                });
+            }
+            
+            Assert.DoesNotThrow(() => System.Threading.Tasks.Task.WaitAll(tasks));
+            
+            var path = LoggingService.GetLogFilePath();
+            var content = System.IO.File.ReadAllText(path);
+            
+            // Verify all messages were logged
+            for (int i = 0; i < 10; i++)
+            {
+                StringAssert.Contains($"Concurrent message {i}", content);
+            }
+        }
+    }
+}

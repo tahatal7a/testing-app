@@ -1,0 +1,668 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+using DesktopTaskAid.Models;
+using DesktopTaskAid.Services;
+using Google.Apis.Auth.OAuth2.Responses;
+using Google.Apis.Calendar.v3.Data;
+using NUnit.Framework;
+
+namespace DesktopTaskAid.Tests
+{
+    [TestFixture]
+    [Apartment(ApartmentState.STA)]
+    public class CalendarImportServiceTests
+    {
+        private class FakeGoogleCalendarClient : IGoogleCalendarClient
+        {
+            public Func<Stream, string, DateTime, DateTime, CancellationToken, Task<IList<Event>>> OnFetchAsync { get; set; }
+            public Task<IList<Event>> FetchEventsAsync(Stream credentialStream, string tokenDirectory, DateTime timeMin, DateTime timeMax, CancellationToken cancellationToken)
+            {
+                if (OnFetchAsync != null)
+                {
+                    return OnFetchAsync(credentialStream, tokenDirectory, timeMin, timeMax, cancellationToken);
+                }
+                return Task.FromResult<IList<Event>>(new List<Event>());
+            }
+        }
+
+        private static string CreateTempDir()
+        {
+            var path = Path.Combine(Path.GetTempPath(), "DesktopTaskAid_CalendarTests", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(path);
+            return path;
+        }
+
+        private static string GetValidCredentialsJson()
+        {
+            return "{\n  \"installed\": {\n    \"client_id\": \"abc\",\n    \"client_secret\": \"xyz\",\n    \"redirect_uris\": [\"urn:ietf:wg:oauth:2.0:oob\", \"http://localhost\"]\n  }\n}";
+        }
+
+        private static string WriteTempFile(string directory, string fileName, string contents)
+        {
+            var path = Path.Combine(directory, fileName);
+            File.WriteAllText(path, contents);
+            return path;
+        }
+
+        [Test]
+        public void Constructor_WithNullStorage_Throws()
+        {
+            Assert.Throws<ArgumentNullException>(() => new CalendarImportService(null));
+        }
+
+        [Test]
+        public void Constructor_NoCredentials_SetsMissingState()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var state = svc.GetCredentialState();
+            Assert.AreEqual(CredentialStatus.Missing, state.Status);
+            StringAssert.Contains("Add google-credentials.json", state.Message);
+        }
+
+        [Test]
+        public void Constructor_AutoImport_ExactFile_SetsValid()
+        {
+            var appDir = CreateTempDir();
+            WriteTempFile(appDir, "google-credentials.json", GetValidCredentialsJson());
+
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var state = svc.GetCredentialState();
+            Assert.AreEqual(CredentialStatus.Valid, state.Status);
+        }
+
+        [Test]
+        public void Constructor_AutoImport_AlternateName_SetsValid()
+        {
+            var appDir = CreateTempDir();
+            WriteTempFile(appDir, "google-credentials.json.backup", GetValidCredentialsJson());
+
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var state = svc.GetCredentialState();
+            Assert.AreEqual(CredentialStatus.Valid, state.Status);
+        }
+
+        [Test]
+        public async Task ImportCredentialsAsync_MissingPath_ReturnsMissing()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var state = await svc.ImportCredentialsAsync(Path.Combine(appDir, "does-not-exist.json"));
+            Assert.AreEqual(CredentialStatus.Missing, state.Status);
+        }
+
+        [Test]
+        public async Task ImportCredentialsAsync_InvalidJson_ReturnsInvalid()
+        {
+            var appDir = CreateTempDir();
+            var invalidJson = "{}"; // missing installed/web
+            var source = WriteTempFile(appDir, "src.json", invalidJson);
+
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var state = await svc.ImportCredentialsAsync(source);
+            Assert.AreEqual(CredentialStatus.Invalid, state.Status);
+            StringAssert.Contains("client configuration", state.Message);
+        }
+
+        [Test]
+        public async Task ImportCredentialsAsync_ValidJson_WritesFile_ClearsTokens_RaisesEvent()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            // Pre-populate the token directory with a file to verify it gets cleared
+            var tokenDir = Path.Combine(storage.GetDataFolderPath(), "GoogleOAuth");
+            Directory.CreateDirectory(tokenDir);
+            var staleFile = Path.Combine(tokenDir, "stale.txt");
+            File.WriteAllText(staleFile, "x");
+
+            var src = WriteTempFile(appDir, "creds.json", GetValidCredentialsJson());
+
+            var eventRaised = 0;
+            svc.CredentialsChanged += (s, e) => eventRaised++;
+
+            var state = await svc.ImportCredentialsAsync(src);
+            Assert.AreEqual(CredentialStatus.Valid, state.Status);
+            Assert.AreEqual(1, eventRaised);
+
+            // Credentials file copied to app directory path
+            Assert.IsTrue(File.Exists(Path.Combine(appDir, "google-credentials.json")));
+
+            // Token directory should be recreated and empty (stale file deleted)
+            Assert.IsTrue(Directory.Exists(tokenDir));
+            Assert.IsFalse(File.Exists(staleFile));
+        }
+
+        [Test]
+        public async Task RunImportAsync_MissingCredentials_ReturnsMissing()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var result = await svc.RunImportAsync();
+            Assert.AreEqual(CalendarImportOutcome.MissingCredentials, result.Outcome);
+        }
+
+        [Test]
+        public async Task RunImportAsync_InvalidCredentials_ReturnsInvalid()
+        {
+            var appDir = CreateTempDir();
+            // write invalid credentials file
+            WriteTempFile(appDir, "google-credentials.json", "{\"installed\":{\"client_id\":\"abc\"}}" );
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var result = await svc.RunImportAsync();
+            Assert.AreEqual(CalendarImportOutcome.InvalidCredentials, result.Outcome);
+        }
+
+        [Test]
+        public async Task RunImportAsync_ValidCredentials_ClientReturnsNull_Cancelled()
+        {
+            var appDir = CreateTempDir();
+            WriteTempFile(appDir, "google-credentials.json", GetValidCredentialsJson());
+            var storage = new StorageService();
+            var fake = new FakeGoogleCalendarClient { OnFetchAsync = (s, t, a, b, c) => Task.FromResult<IList<Event>>(null) };
+            var svc = new CalendarImportService(storage, fake, appDirectory: appDir, enableWatcher: false);
+
+            var result = await svc.RunImportAsync();
+            Assert.AreEqual(CalendarImportOutcome.Cancelled, result.Outcome);
+        }
+
+        [Test]
+        public async Task RunImportAsync_ValidCredentials_NoEvents_ReturnsNoEvents()
+        {
+            var appDir = CreateTempDir();
+            WriteTempFile(appDir, "google-credentials.json", GetValidCredentialsJson());
+            var storage = new StorageService();
+            var fake = new FakeGoogleCalendarClient { OnFetchAsync = (s, t, a, b, c) => Task.FromResult<IList<Event>>(new List<Event>()) };
+            var svc = new CalendarImportService(storage, fake, appDirectory: appDir, enableWatcher: false);
+
+            var result = await svc.RunImportAsync();
+            Assert.AreEqual(CalendarImportOutcome.NoEvents, result.Outcome);
+        }
+
+        [Test]
+        public async Task RunImportAsync_ValidCredentials_MapsEventsToTasks()
+        {
+            var appDir = CreateTempDir();
+            WriteTempFile(appDir, "google-credentials.json", GetValidCredentialsJson());
+            var storage = new StorageService();
+
+            var events = new List<Event>
+            {
+                new Event
+                {
+                    Id = "e1",
+                    Summary = "  Team Sync  ",
+                    Start = new EventDateTime { DateTimeRaw = DateTimeOffset.UtcNow.AddDays(40).ToString("o") },
+                    Reminders = new Event.RemindersData
+                    {
+                        Overrides = new List<EventReminder> { new EventReminder { Minutes = 60 } }
+                    }
+                },
+                new Event
+                {
+                    Id = "e2",
+                    Summary = null,
+                    Start = new EventDateTime { Date = DateTime.Today.AddDays(40).ToString("yyyy-MM-dd") },
+                    Reminders = new Event.RemindersData { UseDefault = true }
+                }
+            };
+
+            var fake = new FakeGoogleCalendarClient
+            {
+                OnFetchAsync = (s, t, a, b, c) => Task.FromResult<IList<Event>>(events)
+            };
+
+            var svc = new CalendarImportService(storage, fake, appDirectory: appDir, enableWatcher: false);
+            var result = await svc.RunImportAsync();
+
+            Assert.AreEqual(CalendarImportOutcome.Success, result.Outcome);
+            Assert.AreEqual(2, result.Tasks.Count);
+
+            var t1 = result.Tasks.First(x => x.ExternalId == "e1");
+            Assert.AreEqual("Team Sync", t1.Name);
+            Assert.AreEqual("1 hour before", t1.ReminderLabel);
+            Assert.AreEqual("active", t1.ReminderStatus);
+            Assert.IsNotNull(t1.DueDate);
+
+            var t2 = result.Tasks.First(x => x.ExternalId == "e2");
+            Assert.AreEqual("Untitled event", t2.Name);
+            Assert.AreEqual("Default reminder", t2.ReminderLabel);
+            Assert.AreEqual("active", t2.ReminderStatus);
+            Assert.IsTrue(t2.DueDate.HasValue);
+            Assert.IsNull(t2.DueTime);
+        }
+
+        [Test]
+        public async Task RunImportAsync_ClientThrows_TaskCanceled_ReturnsCancelled()
+        {
+            var appDir = CreateTempDir();
+            WriteTempFile(appDir, "google-credentials.json", GetValidCredentialsJson());
+            var storage = new StorageService();
+            var fake = new FakeGoogleCalendarClient
+            {
+                OnFetchAsync = (s, t, a, b, c) => throw new TaskCanceledException()
+            };
+            var svc = new CalendarImportService(storage, fake, appDirectory: appDir, enableWatcher: false);
+
+            var result = await svc.RunImportAsync();
+            Assert.AreEqual(CalendarImportOutcome.Cancelled, result.Outcome);
+        }
+
+        [Test]
+        public async Task RunImportAsync_ClientThrows_TokenAccessDenied_ReturnsCancelled()
+        {
+            var appDir = CreateTempDir();
+            WriteTempFile(appDir, "google-credentials.json", GetValidCredentialsJson());
+            var storage = new StorageService();
+            var fake = new FakeGoogleCalendarClient
+            {
+                OnFetchAsync = (s, t, a, b, c) => throw new TokenResponseException(new TokenErrorResponse { Error = "access_denied" })
+            };
+            var svc = new CalendarImportService(storage, fake, appDirectory: appDir, enableWatcher: false);
+
+            var result = await svc.RunImportAsync();
+            Assert.AreEqual(CalendarImportOutcome.Cancelled, result.Outcome);
+        }
+
+        [Test]
+        public async Task RunImportAsync_ClientThrows_GoogleApiException_Forbidden_ReturnsAccessBlocked()
+        {
+            var appDir = CreateTempDir();
+            WriteTempFile(appDir, "google-credentials.json", GetValidCredentialsJson());
+            var storage = new StorageService();
+            
+            // Create a GoogleApiException with HttpStatusCode.Forbidden
+            var fake = new FakeGoogleCalendarClient
+            {
+                OnFetchAsync = (s, t, a, b, c) =>
+                {
+                    var ex = new Google.GoogleApiException("Google.Apis.Requests.RequestError", "Forbidden")
+                    {
+                        HttpStatusCode = HttpStatusCode.Forbidden
+                    };
+                    throw ex;
+                }
+            };
+            
+            var svc = new CalendarImportService(storage, fake, appDirectory: appDir, enableWatcher: false);
+
+            var result = await svc.RunImportAsync();
+            Assert.AreEqual(CalendarImportOutcome.AccessBlocked, result.Outcome);
+            StringAssert.Contains("Google blocked", result.ErrorMessage);
+        }
+
+        [Test]
+        public async Task RunImportAsync_ClientThrows_GenericException_ReturnsError()
+        {
+            var appDir = CreateTempDir();
+            WriteTempFile(appDir, "google-credentials.json", GetValidCredentialsJson());
+            var storage = new StorageService();
+            var fake = new FakeGoogleCalendarClient
+            {
+                OnFetchAsync = (s, t, a, b, c) => throw new InvalidOperationException("Something went wrong")
+            };
+            var svc = new CalendarImportService(storage, fake, appDirectory: appDir, enableWatcher: false);
+
+            var result = await svc.RunImportAsync();
+            Assert.AreEqual(CalendarImportOutcome.Error, result.Outcome);
+            StringAssert.Contains("Something went wrong", result.ErrorMessage);
+        }
+
+        [Test]
+        public void Dispose_DoesNotThrow()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: true);
+
+            Assert.DoesNotThrow(() => svc.Dispose());
+        }
+
+        // Reflection-based tests for private helpers to increase coverage
+        [Test]
+        public void Private_ValidateCredentialJson_VariousFailures()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var method = typeof(CalendarImportService).GetMethod("ValidateCredentialJson", BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(method);
+
+            object[] args = new object[] { "{}", null };
+            var ok = (bool)method.Invoke(svc, args);
+            Assert.False(ok);
+            StringAssert.Contains("installed", args[1] as string);
+
+            args = new object[] { "{\"installed\":{}}", null };
+            ok = (bool)method.Invoke(svc, args);
+            Assert.False(ok);
+            StringAssert.Contains("client ID or secret", args[1] as string);
+
+            args = new object[] { "{\"installed\":{\"client_id\":\"a\", \"client_secret\":\"b\"}}", null };
+            ok = (bool)method.Invoke(svc, args);
+            Assert.False(ok);
+            StringAssert.Contains("redirect URIs", args[1] as string);
+
+            args = new object[] { GetValidCredentialsJson(), null };
+            ok = (bool)method.Invoke(svc, args);
+            Assert.True(ok);
+        }
+
+        [Test]
+        public void Private_ValidateCredentialJson_MalformedJson_ReturnsFalse()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var method = typeof(CalendarImportService).GetMethod("ValidateCredentialJson", BindingFlags.NonPublic | BindingFlags.Instance);
+            
+            object[] args = new object[] { "{invalid json", null };
+            var ok = (bool)method.Invoke(svc, args);
+            Assert.False(ok);
+            StringAssert.Contains("isn't valid JSON", args[1] as string);
+        }
+
+        [Test]
+        public void Private_GetAlternateCredentialPath_FindsMatch()
+        {
+            var dir = CreateTempDir();
+            var path = WriteTempFile(dir, "google-credentials.json.copy", "{}");
+            var method = typeof(CalendarImportService).GetMethod("GetAlternateCredentialPath", BindingFlags.NonPublic | BindingFlags.Static);
+            var result = (string)method.Invoke(null, new object[] { dir });
+            Assert.AreEqual(path, result);
+        }
+
+        [Test]
+        public void Private_GetAlternateCredentialPath_NoMatch_ReturnsNull()
+        {
+            var dir = CreateTempDir();
+            WriteTempFile(dir, "other-file.json", "{}");
+            var method = typeof(CalendarImportService).GetMethod("GetAlternateCredentialPath", BindingFlags.NonPublic | BindingFlags.Static);
+            var result = (string)method.Invoke(null, new object[] { dir });
+            Assert.IsNull(result);
+        }
+
+        [Test]
+        public void Private_GetStartInfo_AllCases()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var method = typeof(CalendarImportService).GetMethod("GetStartInfo", BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(method);
+
+            // DateTimeRaw
+            var raw = new EventDateTime { DateTimeRaw = DateTimeOffset.UtcNow.ToString("o") };
+            var info = method.Invoke(svc, new object[] { raw });
+            Assert.NotNull(info);
+
+            // DateTime with timezone
+            var edt = new EventDateTime { DateTime = DateTime.UtcNow, TimeZone = TimeZoneInfo.Utc.Id };
+            info = method.Invoke(svc, new object[] { edt });
+            Assert.NotNull(info);
+
+            // DateTime with invalid timezone (should fallback)
+            var invalidTz = new EventDateTime { DateTime = DateTime.UtcNow, TimeZone = "Invalid/TimeZone" };
+            info = method.Invoke(svc, new object[] { invalidTz });
+            Assert.NotNull(info);
+
+            // DateTime UTC
+            var utc = new EventDateTime { DateTime = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc) };
+            info = method.Invoke(svc, new object[] { utc });
+            Assert.NotNull(info);
+
+            // DateTime Unspecified
+            var unspec = new EventDateTime { DateTime = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified) };
+            info = method.Invoke(svc, new object[] { unspec });
+            Assert.NotNull(info);
+
+            // All day
+            var allDay = new EventDateTime { Date = DateTime.Today.ToString("yyyy-MM-dd") };
+            info = method.Invoke(svc, new object[] { allDay });
+            Assert.NotNull(info);
+
+            // Null and empty
+            info = method.Invoke(svc, new object[] { null });
+            Assert.NotNull(info);
+
+            // Invalid date string
+            var invalidDate = new EventDateTime { Date = "not-a-date" };
+            info = method.Invoke(svc, new object[] { invalidDate });
+            Assert.NotNull(info);
+        }
+
+        [Test]
+        public void Private_BuildDefaultReminderLabel_Various()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var startInfoType = typeof(CalendarImportService).GetNestedType("EventStartInfo", BindingFlags.NonPublic);
+            var ctor = startInfoType.GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance,
+                binder: null,
+                types: new[] { typeof(DateTime?), typeof(TimeSpan?), typeof(bool) },
+                modifiers: null);
+
+            var method = typeof(CalendarImportService).GetMethod("BuildDefaultReminderLabel", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            var si1 = ctor.Invoke(new object[] { DateTime.Today, new TimeSpan(9, 30, 0), false });
+            var label1 = (string)method.Invoke(svc, new object[] { si1 });
+            StringAssert.Contains(" - ", label1);
+
+            var si2 = ctor.Invoke(new object[] { DateTime.Today, null, true });
+            var label2 = (string)method.Invoke(svc, new object[] { si2 });
+            StringAssert.Contains(",", label2);
+
+            var si3 = ctor.Invoke(new object[] { null, null, false });
+            var label3 = (string)method.Invoke(svc, new object[] { si3 });
+            Assert.AreEqual("Active", label3);
+        }
+
+        [Test]
+        public void Private_FormatReminderMinutes_Various()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var method = typeof(CalendarImportService).GetMethod("FormatReminderMinutes", BindingFlags.NonPublic | BindingFlags.Instance);
+            string L(int m) => (string)method.Invoke(svc, new object[] { m });
+
+            Assert.AreEqual("At start time", L(0));
+            Assert.AreEqual("1 minute before", L(1));
+            Assert.AreEqual("30 minutes before", L(30));
+            Assert.AreEqual("1 hour before", L(60));
+            Assert.AreEqual("2 hours before", L(120));
+            Assert.AreEqual("1 day before", L(1440));
+            Assert.AreEqual("2 days before", L(2880));
+            StringAssert.Contains("days", L(2895));
+            StringAssert.Contains("hours", L(2895));
+            StringAssert.Contains("minutes", L(2895));
+        }
+
+        [Test]
+        public void Private_ConvertToTaskItem_WithNullEvent_ReturnsNull()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var method = typeof(CalendarImportService).GetMethod("ConvertToTaskItem", BindingFlags.NonPublic | BindingFlags.Instance);
+            var result = method.Invoke(svc, new object[] { null });
+            Assert.IsNull(result);
+        }
+
+        [Test]
+        public void Private_ConvertToTaskItem_WithNoReminders_UsesDefault()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var ev = new Event
+            {
+                Id = "test",
+                Summary = "Test Event",
+                Start = new EventDateTime { DateTime = DateTime.Now.AddDays(1) },
+                Reminders = null
+            };
+
+            var method = typeof(CalendarImportService).GetMethod("ConvertToTaskItem", BindingFlags.NonPublic | BindingFlags.Instance);
+            var result = (TaskItem)method.Invoke(svc, new object[] { ev });
+            
+            Assert.AreEqual("Test Event", result.Name);
+            Assert.AreEqual("active", result.ReminderStatus);
+            Assert.IsNotNull(result.ReminderLabel);
+        }
+
+        [Test]
+        public void Watcher_Responds_To_Delete()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            File.WriteAllText(Path.Combine(appDir, "google-credentials.json"), GetValidCredentialsJson());
+
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: true);
+
+            var tcs = new TaskCompletionSource<CredentialStatus>();
+            svc.CredentialsChanged += (s, e) =>
+            {
+                var st = svc.GetCredentialState();
+                if (st.Status == CredentialStatus.Missing)
+                {
+                    tcs.TrySetResult(st.Status);
+                }
+            };
+
+            File.Delete(Path.Combine(appDir, "google-credentials.json"));
+
+            // Wait a bit for watcher to fire (HandleCredentialsFileChanged has 200ms delay)
+            Assert.IsTrue(tcs.Task.Wait(TimeSpan.FromSeconds(5)));
+            Assert.AreEqual(CredentialStatus.Missing, tcs.Task.Result);
+        }
+
+        [Test]
+        public void Watcher_Responds_To_Change()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var credPath = Path.Combine(appDir, "google-credentials.json");
+            File.WriteAllText(credPath, GetValidCredentialsJson());
+
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: true);
+
+            var tcs = new TaskCompletionSource<bool>();
+            var eventCount = 0;
+            svc.CredentialsChanged += (s, e) =>
+            {
+                eventCount++;
+                if (eventCount >= 1)
+                {
+                    tcs.TrySetResult(true);
+                }
+            };
+
+            // Modify the file
+            System.Threading.Thread.Sleep(500); // Allow watcher to initialize
+            File.WriteAllText(credPath, GetValidCredentialsJson());
+
+            // Wait for watcher to fire
+            Assert.IsTrue(tcs.Task.Wait(TimeSpan.FromSeconds(5)));
+        }
+
+        [Test]
+        public void Constructor_AutoImport_SearchesParentDirectories()
+        {
+            var tempBase = CreateTempDir();
+            var subDir1 = Path.Combine(tempBase, "sub1");
+            var subDir2 = Path.Combine(subDir1, "sub2");
+            Directory.CreateDirectory(subDir2);
+
+            // Place credential file in parent directory
+            WriteTempFile(tempBase, "google-credentials.json", GetValidCredentialsJson());
+
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: subDir2, enableWatcher: false);
+
+            var state = svc.GetCredentialState();
+            Assert.AreEqual(CredentialStatus.Valid, state.Status);
+        }
+
+        [Test]
+        public async Task ImportCredentialsAsync_WithCancellationToken_Cancelled_ReturnsInvalid()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            var src = WriteTempFile(appDir, "creds.json", GetValidCredentialsJson());
+
+            var state = await svc.ImportCredentialsAsync(src, cts.Token);
+            Assert.AreEqual(CredentialStatus.Invalid, state.Status);
+        }
+
+        [Test]
+        public void Private_FindCredentialFileCandidate_ReturnsNullWhenNothingFound()
+        {
+            var appDir = CreateTempDir();
+            var storage = new StorageService();
+            var svc = new CalendarImportService(storage, appDirectory: appDir, enableWatcher: false);
+
+            var method = typeof(CalendarImportService).GetMethod("FindCredentialFileCandidate", BindingFlags.NonPublic | BindingFlags.Instance);
+            var result = (string)method.Invoke(svc, null);
+            Assert.IsNull(result);
+        }
+
+        [Test]
+        public async Task RunImportAsync_WithCancellationToken_Propagates()
+        {
+            var appDir = CreateTempDir();
+            WriteTempFile(appDir, "google-credentials.json", GetValidCredentialsJson());
+            var storage = new StorageService();
+            var fake = new FakeGoogleCalendarClient
+            {
+                OnFetchAsync = (s, t, a, b, c) =>
+                {
+                    c.ThrowIfCancellationRequested();
+                    return Task.FromResult<IList<Event>>(new List<Event>());
+                }
+            };
+            var svc = new CalendarImportService(storage, fake, appDirectory: appDir, enableWatcher: false);
+
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            var result = await svc.RunImportAsync(cts.Token);
+            Assert.AreEqual(CalendarImportOutcome.Cancelled, result.Outcome);
+        }
+    }
+}

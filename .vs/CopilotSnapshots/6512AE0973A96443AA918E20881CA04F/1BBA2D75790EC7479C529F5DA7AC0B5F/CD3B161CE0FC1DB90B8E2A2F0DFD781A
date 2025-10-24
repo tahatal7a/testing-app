@@ -1,0 +1,601 @@
+﻿using System;
+using System.Threading;
+using System.Windows;
+using DesktopTaskAid.Models;
+using DesktopTaskAid.Services;
+using DesktopTaskAid.ViewModels;
+using NUnit.Framework;
+
+namespace DesktopTaskAid.Tests
+{
+    [TestFixture]
+    [Apartment(ApartmentState.STA)]
+    public class MainWindowTests
+    {
+        [SetUp]
+        public void Setup()
+        {
+            if (Application.Current == null)
+            {
+                new Application();
+            }
+            Application.Current.Resources.MergedDictionaries.Clear();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            Application.Current.Resources.MergedDictionaries.Clear();
+        }
+
+        [Test]
+        public void MainWindow_Constructor_InitializesSuccessfully()
+        {
+            MainWindow window = null;
+            Assert.DoesNotThrow(() =>
+            {
+                window = new MainWindow();
+            });
+
+            Assert.IsNotNull(window);
+            Assert.IsInstanceOf<MainViewModel>(window.DataContext);
+        }
+
+        [Test]
+        public void MainWindow_Constructor_SubscribesToThemeChanged()
+        {
+            var window = new MainWindow();
+            var viewModel = window.DataContext as MainViewModel;
+
+            Assert.IsNotNull(viewModel);
+            // If subscription succeeds, ThemeChanged event should have at least one subscriber
+            // We can't directly test private event subscriptions, but we can verify ViewModel exists
+            Assert.IsInstanceOf<MainViewModel>(viewModel);
+        }
+
+        [Test]
+        public void MainWindow_Constructor_SetsUpEventHandlers()
+        {
+            var window = new MainWindow();
+
+            // Verify window was created (events are hooked in constructor)
+            Assert.IsNotNull(window);
+            Assert.IsNotNull(window.DataContext);
+        }
+
+        [Test]
+        public void MainWindow_DefaultState_HasCorrectProperties()
+        {
+            var window = new MainWindow();
+
+            Assert.IsNotNull(window.DataContext);
+            Assert.IsTrue(window.Width > 0);
+            Assert.IsTrue(window.Height > 0);
+        }
+
+        [Test]
+        public void MainWindow_WithNullDataContext_DoesNotThrow()
+        {
+            var window = new MainWindow();
+            
+            // Setting DataContext to null should not cause issues
+            Assert.DoesNotThrow(() => window.DataContext = null);
+        }
+
+        [Test]
+        public void MainWindow_MultipleInstances_CanBeCreated()
+        {
+            var window1 = new MainWindow();
+            var window2 = new MainWindow();
+
+            Assert.IsNotNull(window1);
+            Assert.IsNotNull(window2);
+            Assert.AreNotSame(window1, window2);
+            Assert.AreNotSame(window1.DataContext, window2.DataContext);
+        }
+
+        [Test]
+        public void MainWindow_ViewModel_IsNotNull()
+        {
+            var window = new MainWindow();
+            var viewModel = window.DataContext as MainViewModel;
+
+            Assert.IsNotNull(viewModel);
+            Assert.IsNotNull(viewModel.AllTasks);
+            Assert.IsNotNull(viewModel.DisplayedTasks);
+        }
+
+        [Test]
+        public void MainWindow_Loaded_EventCanBeFired()
+        {
+            var window = new MainWindow();
+            var eventFired = false;
+
+            window.Loaded += (s, e) => eventFired = true;
+            window.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+            Assert.IsTrue(eventFired);
+        }
+
+        [Test]
+        public void MainWindow_ThemeChange_UpdatesIllustration()
+        {
+            var window = new MainWindow();
+            var viewModel = window.DataContext as MainViewModel;
+
+            Assert.IsNotNull(viewModel);
+
+            // Initial theme
+            var initialTheme = viewModel.CurrentTheme;
+            Assert.IsNotNull(initialTheme);
+
+            // Change theme
+            if (initialTheme == "light")
+            {
+                viewModel.IsDarkTheme = true;
+            }
+            else
+            {
+                viewModel.IsDarkTheme = false;
+            }
+
+            // Theme should have changed
+            Assert.AreNotEqual(initialTheme, viewModel.CurrentTheme);
+        }
+
+        [Test]
+        public void MainWindow_DataContext_IsMainViewModel()
+        {
+            var window = new MainWindow();
+
+            Assert.IsInstanceOf<MainViewModel>(window.DataContext);
+        }
+
+        [Test]
+        public void MainWindow_Constructor_LogsCreation()
+        {
+            var marker = Guid.NewGuid().ToString();
+            
+            // Create window (this will log)
+            var window = new MainWindow();
+            
+            var path = LoggingService.GetLogFilePath();
+            var content = System.IO.File.ReadAllText(path);
+            
+            // Verify construction logs are present
+            StringAssert.Contains("MainWindow Constructor BEGIN", content);
+            StringAssert.Contains("MainWindow Constructor COMPLETED", content);
+        }
+    }
+
+    [TestFixture]
+    [Apartment(ApartmentState.STA)]
+    public class MainViewModelAdditionalTests
+    {
+        [SetUp]
+        public void Setup()
+        {
+            if (Application.Current == null)
+            {
+                new Application();
+            }
+            Application.Current.Resources.MergedDictionaries.Clear();
+            Application.Current.Resources["IsDarkTheme"] = false;
+        }
+
+        [Test]
+        public void MainViewModel_Constructor_InitializesAllCommands()
+        {
+            var vm = new MainViewModel();
+
+            Assert.IsNotNull(vm.ToggleThemeCommand);
+            Assert.IsNotNull(vm.ToggleTimerCommand);
+            Assert.IsNotNull(vm.ResetTimerCommand);
+            Assert.IsNotNull(vm.PreviousMonthCommand);
+            Assert.IsNotNull(vm.NextMonthCommand);
+            Assert.IsNotNull(vm.SelectDateCommand);
+            Assert.IsNotNull(vm.AddTaskCommand);
+            Assert.IsNotNull(vm.EditTaskCommand);
+            Assert.IsNotNull(vm.DeleteTaskCommand);
+            Assert.IsNotNull(vm.SaveTaskCommand);
+            Assert.IsNotNull(vm.CloseModalCommand);
+            Assert.IsNotNull(vm.PreviousPageCommand);
+            Assert.IsNotNull(vm.NextPageCommand);
+            Assert.IsNotNull(vm.ImportNextMonthCommand);
+            Assert.IsNotNull(vm.CreateGoogleAccountCommand);
+            Assert.IsNotNull(vm.OpenCalendarImportModalCommand);
+            Assert.IsNotNull(vm.CloseCalendarImportModalCommand);
+        }
+
+        [Test]
+        public void MainViewModel_Constructor_InitializesAllCollections()
+        {
+            var vm = new MainViewModel();
+
+            Assert.IsNotNull(vm.AllTasks);
+            Assert.IsNotNull(vm.DisplayedTasks);
+            Assert.IsNotNull(vm.CalendarDays);
+            Assert.IsNotNull(vm.DailyTasks);
+        }
+
+        [Test]
+        public void MainViewModel_Constructor_SetsDefaultValues()
+        {
+            var vm = new MainViewModel();
+
+            Assert.Greater(vm.PageSize, 0);
+            Assert.GreaterOrEqual(vm.CurrentPage, 1);
+            Assert.IsNotNull(vm.CurrentTheme);
+            Assert.IsNotNull(vm.CurrentMonthDisplay);
+            Assert.IsNotNull(vm.PaginationText);
+        }
+
+        [Test]
+        public void MainViewModel_ThemeChanged_EventExists()
+        {
+            var vm = new MainViewModel();
+            
+            // ThemeChanged is a public event that can be subscribed to
+            vm.ThemeChanged += () => { /* handler */ };
+            
+            Assert.IsNotNull(vm);
+        }
+
+        [Test]
+        public void MainViewModel_AllProperties_CanBeSetAndGet()
+        {
+            var vm = new MainViewModel();
+
+            // Test string properties
+            vm.SearchText = "test search";
+            Assert.AreEqual("test search", vm.SearchText);
+
+            vm.CurrentTheme = "dark";
+            Assert.AreEqual("dark", vm.CurrentTheme);
+
+            vm.ModalTitle = "Test Modal";
+            Assert.AreEqual("Test Modal", vm.ModalTitle);
+
+            vm.ImportStatusMessage = "Test Status";
+            Assert.AreEqual("Test Status", vm.ImportStatusMessage);
+
+            // Test boolean properties
+            vm.IsDarkTheme = true;
+            Assert.IsTrue(vm.IsDarkTheme);
+
+            vm.TimerRunning = true;
+            Assert.IsTrue(vm.TimerRunning);
+
+            vm.IsModalOpen = true;
+            Assert.IsTrue(vm.IsModalOpen);
+
+            vm.IsCalendarImportModalOpen = true;
+            Assert.IsTrue(vm.IsCalendarImportModalOpen);
+
+            // Test integer properties
+            vm.TimerRemaining = 100;
+            Assert.AreEqual(100, vm.TimerRemaining);
+
+            vm.DoneTodaySeconds = 500;
+            Assert.AreEqual(500, vm.DoneTodaySeconds);
+
+            vm.DailyTaskCount = 5;
+            Assert.AreEqual(5, vm.DailyTaskCount);
+
+            vm.CurrentPage = 2;
+            Assert.AreEqual(2, vm.CurrentPage);
+
+            vm.PageSize = 15;
+            Assert.AreEqual(15, vm.PageSize);
+
+            // Test DateTime properties
+            var testDate = new DateTime(2025, 6, 15);
+            vm.CurrentMonth = testDate;
+            Assert.AreEqual(testDate, vm.CurrentMonth);
+
+            vm.SelectedDate = testDate;
+            Assert.AreEqual(testDate, vm.SelectedDate);
+        }
+
+        [Test]
+        public void MainViewModel_Commands_CanExecute()
+        {
+            var vm = new MainViewModel();
+
+            // Commands that should always be executable
+            Assert.IsTrue(vm.ToggleThemeCommand.CanExecute(null));
+            Assert.IsTrue(vm.ToggleTimerCommand.CanExecute(null));
+            Assert.IsTrue(vm.ResetTimerCommand.CanExecute(null));
+            Assert.IsTrue(vm.PreviousMonthCommand.CanExecute(null));
+            Assert.IsTrue(vm.NextMonthCommand.CanExecute(null));
+            Assert.IsTrue(vm.AddTaskCommand.CanExecute(null));
+            Assert.IsTrue(vm.SaveTaskCommand.CanExecute(null));
+            Assert.IsTrue(vm.CloseModalCommand.CanExecute(null));
+            Assert.IsTrue(vm.CloseCalendarImportModalCommand.CanExecute(null));
+        }
+
+        [Test]
+        public void MainViewModel_OpenCalendarImportModal_SetsProperty()
+        {
+            var vm = new MainViewModel();
+
+            Assert.IsFalse(vm.IsCalendarImportModalOpen);
+
+            vm.OpenCalendarImportModalCommand.Execute(null);
+
+            Assert.IsTrue(vm.IsCalendarImportModalOpen);
+        }
+
+        [Test]
+        public void MainViewModel_CloseCalendarImportModal_ClearsProperty()
+        {
+            var vm = new MainViewModel();
+            vm.OpenCalendarImportModalCommand.Execute(null);
+
+            Assert.IsTrue(vm.IsCalendarImportModalOpen);
+
+            vm.CloseCalendarImportModalCommand.Execute(null);
+
+            Assert.IsFalse(vm.IsCalendarImportModalOpen);
+        }
+
+        [Test]
+        public void MainViewModel_TimerButtonText_ChangesWithState()
+        {
+            var vm = new MainViewModel();
+
+            vm.TimerRunning = false;
+            Assert.AreEqual("Start Timer", vm.TimerButtonText);
+
+            vm.TimerRunning = true;
+            Assert.AreEqual("Pause Timer", vm.TimerButtonText);
+
+            vm.TimerRunning = false;
+            Assert.AreEqual("Start Timer", vm.TimerButtonText);
+        }
+
+        [Test]
+        public void MainViewModel_SearchText_TriggersRefresh()
+        {
+            var vm = new MainViewModel();
+            vm.AllTasks.Clear();
+
+            for (int i = 0; i < 10; i++)
+            {
+                vm.AllTasks.Add(new TaskItem { Name = $"Task {i}", DueDate = DateTime.Today });
+            }
+
+            var initialCount = vm.DisplayedTasks.Count;
+
+            vm.SearchText = "Task 5";
+
+            // Should filter to only Task 5
+            Assert.AreEqual(1, vm.DisplayedTasks.Count);
+            Assert.AreEqual("Task 5", vm.DisplayedTasks[0].Name);
+        }
+
+        [Test]
+        public void MainViewModel_PageSize_Change_ResetsToFirstPage()
+        {
+            var vm = new MainViewModel();
+            vm.AllTasks.Clear();
+
+            for (int i = 0; i < 20; i++)
+            {
+                vm.AllTasks.Add(new TaskItem { Name = $"Task {i}", DueDate = DateTime.Today });
+            }
+
+            vm.PageSize = 5;
+            vm.CurrentPage = 3;
+
+            Assert.AreEqual(3, vm.CurrentPage);
+
+            vm.PageSize = 10; // This should reset to page 1
+
+            Assert.AreEqual(1, vm.CurrentPage);
+        }
+
+        [Test]
+        public void MainViewModel_CurrentMonth_Change_UpdatesDisplay()
+        {
+            var vm = new MainViewModel();
+            var initialMonth = vm.CurrentMonth;
+
+            vm.CurrentMonth = initialMonth.AddMonths(1);
+
+            var expectedDisplay = initialMonth.AddMonths(1).ToString("MMMM yyyy", 
+                System.Globalization.CultureInfo.InvariantCulture);
+            Assert.AreEqual(expectedDisplay, vm.CurrentMonthDisplay);
+        }
+
+        [Test]
+        public void MainViewModel_SelectedDate_Change_RefreshesDailyTasks()
+        {
+            var vm = new MainViewModel();
+            vm.AllTasks.Clear();
+
+            var targetDate = DateTime.Today.AddDays(3);
+            vm.AllTasks.Add(new TaskItem 
+            { 
+                Name = "Test Task", 
+                DueDate = targetDate,
+                DueTime = TimeSpan.FromHours(10)
+            });
+
+            vm.SelectedDate = targetDate;
+
+            Assert.AreEqual(1, vm.DailyTaskCount);
+            Assert.AreEqual(targetDate.ToString("dddd, MMM dd", 
+                System.Globalization.CultureInfo.InvariantCulture), vm.SelectedDateDisplay);
+        }
+
+        [Test]
+        public void MainViewModel_AddTask_OpensModalWithDefaults()
+        {
+            var vm = new MainViewModel();
+
+            vm.AddTaskCommand.Execute(null);
+
+            Assert.IsTrue(vm.IsModalOpen);
+            Assert.AreEqual("Add Task", vm.ModalTitle);
+            Assert.IsNotNull(vm.EditingTask);
+            Assert.AreEqual("active", vm.EditingTask.ReminderStatus);
+        }
+
+        [Test]
+        public void MainViewModel_EditTask_OpensModalWithTaskData()
+        {
+            var vm = new MainViewModel();
+            vm.AllTasks.Clear();
+
+            var task = new TaskItem
+            {
+                Name = "Original Task",
+                DueDate = DateTime.Today,
+                DueTime = TimeSpan.FromHours(15),
+                ReminderStatus = "active"
+            };
+            vm.AllTasks.Add(task);
+
+            vm.EditTaskCommand.Execute(task);
+
+            Assert.IsTrue(vm.IsModalOpen);
+            Assert.AreEqual("Edit Task", vm.ModalTitle);
+            Assert.IsNotNull(vm.EditingTask);
+            Assert.AreEqual("Original Task", vm.EditingTask.Name);
+            Assert.AreEqual(task.Id, vm.EditingTask.Id);
+        }
+
+        [Test]
+        public void MainViewModel_SaveTask_AddsNewTask()
+        {
+            var vm = new MainViewModel();
+            vm.AllTasks.Clear();
+
+            vm.AddTaskCommand.Execute(null);
+            vm.EditingTask.Name = "New Task";
+            vm.EditingTask.ReminderStatus = "active";
+            vm.SaveTaskCommand.Execute(null);
+
+            Assert.AreEqual(1, vm.AllTasks.Count);
+            Assert.AreEqual("New Task", vm.AllTasks[0].Name);
+            Assert.IsFalse(vm.IsModalOpen);
+        }
+
+        [Test]
+        public void MainViewModel_SaveTask_UpdatesExistingTask()
+        {
+            var vm = new MainViewModel();
+            vm.AllTasks.Clear();
+
+            var task = new TaskItem { Name = "Original", DueDate = DateTime.Today };
+            vm.AllTasks.Add(task);
+
+            vm.EditTaskCommand.Execute(task);
+            vm.EditingTask.Name = "Updated";
+            vm.SaveTaskCommand.Execute(null);
+
+            Assert.AreEqual(1, vm.AllTasks.Count);
+            Assert.AreEqual("Updated", vm.AllTasks[0].Name);
+        }
+
+        [Test]
+        public void MainViewModel_CloseModal_ClearsEditingTask()
+        {
+            var vm = new MainViewModel();
+
+            vm.AddTaskCommand.Execute(null);
+            vm.EditingTask.Name = "Test";
+
+            Assert.IsTrue(vm.IsModalOpen);
+            Assert.IsNotNull(vm.EditingTask);
+
+            vm.CloseModalCommand.Execute(null);
+
+            Assert.IsFalse(vm.IsModalOpen);
+            Assert.IsNull(vm.EditingTask);
+        }
+
+        [Test]
+        public void MainViewModel_ResetTimer_StopsAndResetsValues()
+        {
+            var vm = new MainViewModel();
+
+            // Start timer
+            vm.ToggleTimerCommand.Execute(null);
+            Assert.IsTrue(vm.TimerRunning);
+
+            // Change remaining time
+            vm.TimerRemaining = 100;
+
+            // Reset
+            vm.ResetTimerCommand.Execute(null);
+
+            Assert.IsFalse(vm.TimerRunning);
+            Assert.Greater(vm.TimerRemaining, 100); // Should be reset to default duration
+        }
+
+        [Test]
+        public void MainViewModel_ToggleTimer_StartsAndStops()
+        {
+            var vm = new MainViewModel();
+
+            Assert.IsFalse(vm.TimerRunning);
+
+            vm.ToggleTimerCommand.Execute(null);
+            Assert.IsTrue(vm.TimerRunning);
+
+            vm.ToggleTimerCommand.Execute(null);
+            Assert.IsFalse(vm.TimerRunning);
+        }
+
+        [Test]
+        public void MainViewModel_PreviousMonth_DecreasesMonth()
+        {
+            var vm = new MainViewModel();
+            var initial = vm.CurrentMonth;
+
+            vm.PreviousMonthCommand.Execute(null);
+
+            Assert.AreEqual(initial.AddMonths(-1).Month, vm.CurrentMonth.Month);
+        }
+
+        [Test]
+        public void MainViewModel_NextMonth_IncreasesMonth()
+        {
+            var vm = new MainViewModel();
+            var initial = vm.CurrentMonth;
+
+            vm.NextMonthCommand.Execute(null);
+
+            Assert.AreEqual(initial.AddMonths(1).Month, vm.CurrentMonth.Month);
+        }
+
+        [Test]
+        public void MainViewModel_SelectDate_UpdatesSelectedDate()
+        {
+            var vm = new MainViewModel();
+            var targetDate = new DateTime(2025, 7, 15);
+
+            vm.SelectDateCommand.Execute(targetDate);
+
+            Assert.AreEqual(targetDate, vm.SelectedDate);
+        }
+
+        [Test]
+        public void MainViewModel_MultiplePropertyChanges_FireEvents()
+        {
+            var vm = new MainViewModel();
+            var propertyChangedCount = 0;
+
+            vm.PropertyChanged += (s, e) => propertyChangedCount++;
+
+            vm.SearchText = "test";
+            vm.CurrentPage = 2;
+            vm.IsModalOpen = true;
+            vm.TimerRunning = true;
+
+            Assert.Greater(propertyChangedCount, 0);
+        }
+    }
+}

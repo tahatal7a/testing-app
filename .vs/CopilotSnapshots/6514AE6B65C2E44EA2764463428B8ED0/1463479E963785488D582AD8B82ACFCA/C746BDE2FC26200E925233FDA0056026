@@ -1,0 +1,54 @@
+﻿using System;
+using System.Threading;
+using System.Windows;
+using System.Windows.Media;
+using DesktopTaskAid.Converters;
+using NUnit.Framework;
+
+namespace DesktopTaskAid.Tests
+{
+    [TestFixture]
+    [Apartment(ApartmentState.STA)]
+    public class IconStrokeConverterMoreTests
+    {
+        [SetUp]
+        public void Setup()
+        {
+            if (Application.Current == null)
+            {
+                new Application();
+            }
+            Application.Current.Resources.MergedDictionaries.Clear();
+            Application.Current.Resources.Remove("IsDarkTheme");
+            Application.Current.Resources.Remove("ThemeName");
+        }
+
+        [Test]
+        public void Convert_UsesThemeNameFallback_WhenProvided()
+        {
+            var conv = new IconStrokeConverter();
+            Application.Current.Resources["ThemeName"] = "dark";
+
+            var brush = (SolidColorBrush)conv.Convert(null, typeof(Brush), null, null);
+            Assert.AreEqual(Brushes.White.Color, brush.Color);
+        }
+
+        [Test]
+        public void Convert_MergedDictionaryNameFallback_WhenNoFlags()
+        {
+            var conv = new IconStrokeConverter();
+            var rd = new ResourceDictionary { Source = new Uri("pack://application:,,,/Some/darkTheme.xaml") };
+            Application.Current.Resources.MergedDictionaries.Add(rd);
+
+            var brush = (SolidColorBrush)conv.Convert(null, typeof(Brush), null, null);
+            Assert.AreEqual(Brushes.White.Color, brush.Color);
+        }
+
+        [Test]
+        public void ConvertBack_Throws_NotImplemented()
+        {
+            var conv = new IconStrokeConverter();
+            Assert.Throws<NotImplementedException>(() => conv.ConvertBack(null, null, null, null));
+        }
+    }
+}

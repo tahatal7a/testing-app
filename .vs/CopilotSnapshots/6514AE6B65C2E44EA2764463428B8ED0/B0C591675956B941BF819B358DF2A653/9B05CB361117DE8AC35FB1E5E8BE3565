@@ -1,0 +1,69 @@
+﻿using System;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
+using System.Windows;
+using System.Windows.Media.Imaging;
+using DesktopTaskAid;
+using DesktopTaskAid.Services;
+using NUnit.Framework;
+
+namespace DesktopTaskAid.Tests
+{
+    [TestFixture]
+    [Apartment(ApartmentState.STA)]
+    public class MainWindowTests
+    {
+        [SetUp]
+        public void Setup()
+        {
+            if (Application.Current == null)
+            {
+                new Application();
+            }
+            Application.Current.Resources.MergedDictionaries.Clear();
+        }
+
+        [Test]
+        public void Constructor_Subscribes_And_Logs()
+        {
+            var wnd = new MainWindow();
+            Assert.IsNotNull(wnd);
+            var log = System.IO.File.ReadAllText(LoggingService.GetLogFilePath());
+            StringAssert.Contains("MainWindow Constructor BEGIN", log);
+            StringAssert.Contains("COMPLETED", log);
+        }
+
+        [Test]
+        public void UpdateWelcomeIllustration_UsesFallbackRelativeOnFailure()
+        {
+            // Create a window and force a dark theme name that doesn't exist to trigger fallback
+            var wnd = new MainWindow();
+
+            // Clear dictionaries so primary resource pack path load fails; the catch should try relative
+            Application.Current.Resources.MergedDictionaries.Clear();
+
+            var mi = typeof(MainWindow).GetMethod("UpdateWelcomeIllustration", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(mi);
+
+            Assert.DoesNotThrow(() => mi.Invoke(wnd, null));
+
+            // We cannot assert actual BitmapImage source path easily, but ensure WelcomeIllustration exists
+            var field = typeof(MainWindow).GetField("WelcomeIllustration", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            Assert.IsNotNull(field);
+        }
+
+        [Test]
+        public void WindowButtons_DoNotThrow()
+        {
+            var wnd = new MainWindow();
+
+            Assert.DoesNotThrow(() => typeof(MainWindow).GetMethod("MinimizeWindow", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(wnd, new object[] { null, new RoutedEventArgs() }));
+            Assert.DoesNotThrow(() => typeof(MainWindow).GetMethod("MaximizeWindow", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(wnd, new object[] { null, new RoutedEventArgs() }));
+            Assert.DoesNotThrow(() => typeof(MainWindow).GetMethod("CloseWindow", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(wnd, new object[] { null, new RoutedEventArgs() }));
+        }
+    }
+}

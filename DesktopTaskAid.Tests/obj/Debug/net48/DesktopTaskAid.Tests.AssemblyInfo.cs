@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DesktopTaskAid.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+48e9ae38347fae86bb6987f78c505adcf92fa74b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ea550c95c868b7549e5140dfc05460bd1f19794b")]
 [assembly: System.Reflection.AssemblyProductAttribute("DesktopTaskAid.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DesktopTaskAid.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

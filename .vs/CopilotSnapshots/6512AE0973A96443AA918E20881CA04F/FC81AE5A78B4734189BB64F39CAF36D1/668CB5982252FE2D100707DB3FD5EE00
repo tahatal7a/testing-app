@@ -1,0 +1,439 @@
+﻿using System;
+using System.Globalization;
+using System.Threading;
+using System.Windows;
+using System.Windows.Media;
+using DesktopTaskAid.Converters;
+using DesktopTaskAid.ViewModels;
+using NUnit.Framework;
+
+namespace DesktopTaskAid.Tests
+{
+    [TestFixture]
+    [Apartment(ApartmentState.STA)]
+    public class ConverterTests
+    {
+        [SetUp]
+        public void Setup()
+        {
+            if (Application.Current == null)
+            {
+                new Application();
+            }
+
+            Application.Current.Resources.MergedDictionaries.Clear();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            Application.Current.Resources.MergedDictionaries.Clear();
+        }
+
+        [Test]
+        public void BoolToVisibilityConverter_BasicAndInverse()
+        {
+            var converter = new BoolToVisibilityConverter();
+
+            Assert.AreEqual(Visibility.Visible, converter.Convert(true, typeof(Visibility), null, null));
+            Assert.AreEqual(Visibility.Collapsed, converter.Convert(false, typeof(Visibility), null, null));
+            Assert.AreEqual(Visibility.Collapsed, converter.Convert("not bool", typeof(Visibility), null, null));
+            Assert.AreEqual(Visibility.Collapsed, converter.Convert(true, typeof(Visibility), "Inverse", null));
+            Assert.AreEqual(Visibility.Visible, converter.Convert(false, typeof(Visibility), "Inverse", null));
+            Assert.IsTrue((bool)converter.ConvertBack(Visibility.Visible, typeof(bool), null, null));
+            Assert.IsFalse((bool)converter.ConvertBack(Visibility.Collapsed, typeof(bool), null, null));
+        }
+
+        [Test]
+        public void CalendarDayTagConverter_ReturnsRequestedProperty()
+        {
+            var converter = new CalendarDayTagConverter();
+            var day = new CalendarDay { IsSelected = true, IsToday = false };
+
+            Assert.IsTrue((bool)converter.Convert(day, typeof(bool), "IsSelected", null));
+            Assert.IsFalse((bool)converter.Convert(day, typeof(bool), "IsToday", null));
+            Assert.IsFalse((bool)converter.Convert("not day", typeof(bool), "IsToday", null));
+            Assert.Throws<NotImplementedException>(() => converter.ConvertBack(true, typeof(CalendarDay), null, null));
+        }
+
+        [Test]
+        public void DateFormatConverter_FormatsAndParses()
+        {
+            var converter = new DateFormatConverter();
+            var date = new DateTime(2024, 5, 10);
+
+            Assert.AreEqual("10-05-2024", converter.Convert(date, typeof(string), null, null));
+            var parsed = converter.ConvertBack("10-05-2024", typeof(DateTime), null, CultureInfo.InvariantCulture);
+            Assert.AreEqual(date, parsed);
+            Assert.AreEqual(string.Empty, converter.Convert("not date", typeof(string), null, null));
+            Assert.IsNull(converter.ConvertBack("bad", typeof(DateTime), null, CultureInfo.InvariantCulture));
+        }
+
+        [Test]
+        public void ReminderStatusToBrushConverter_ReturnsExpectedColors()
+        {
+            var converter = new ReminderStatusToBrushConverter();
+
+            var active = (SolidColorBrush)converter.Convert("active", typeof(Brush), null, null);
+            var overdue = (SolidColorBrush)converter.Convert("overdue", typeof(Brush), null, null);
+            var none = (SolidColorBrush)converter.Convert("none", typeof(Brush), null, null);
+            var fallback = (SolidColorBrush)converter.Convert(123, typeof(Brush), null, null);
+
+            Assert.AreEqual(Color.FromRgb(180, 223, 210), active.Color);
+            Assert.AreEqual(Color.FromRgb(255, 194, 181), overdue.Color);
+            Assert.AreEqual(Color.FromRgb(255, 238, 181), none.Color);
+            Assert.AreEqual(Color.FromRgb(255, 238, 181), fallback.Color);
+        }
+
+        [Test]
+        public void ReminderStatusToTextColorConverter_ReturnsExpectedColors()
+        {
+            var converter = new ReminderStatusToTextColorConverter();
+
+            var active = (SolidColorBrush)converter.Convert("active", typeof(Brush), null, null);
+            var overdue = (SolidColorBrush)converter.Convert("overdue", typeof(Brush), null, null);
+            var none = (SolidColorBrush)converter.Convert("none", typeof(Brush), null, null);
+            var fallback = (SolidColorBrush)converter.Convert(123, typeof(Brush), null, null);
+
+            Assert.AreEqual(Color.FromRgb(24, 119, 91), active.Color);
+            Assert.AreEqual(Color.FromRgb(212, 48, 41), overdue.Color);
+            Assert.AreEqual(Color.FromRgb(212, 152, 41), none.Color);
+            Assert.AreEqual(Color.FromRgb(212, 152, 41), fallback.Color);
+        }
+
+        [Test]
+        public void SecondsToDurationConverter_FormatsValues()
+        {
+            var converter = new SecondsToDurationConverter();
+            Assert.AreEqual("1:01:01", converter.Convert(3661, typeof(string), null, null));
+            Assert.AreEqual("0:00:00", converter.Convert("bad", typeof(string), null, null));
+        }
+
+        [Test]
+        public void SecondsToTimerDisplayConverter_FormatsValues()
+        {
+            var converter = new SecondsToTimerDisplayConverter();
+            Assert.AreEqual("05:10", converter.Convert(310, typeof(string), null, null));
+            Assert.AreEqual("00:00", converter.Convert("bad", typeof(string), null, null));
+        }
+
+        [Test]
+        public void TimeFormatConverter_FormatsTimes()
+        {
+            var converter = new TimeFormatConverter();
+            Assert.AreEqual("1 PM", converter.Convert(TimeSpan.FromHours(13), typeof(string), null, null));
+            Assert.AreEqual("2:30 AM", converter.Convert(new TimeSpan(2, 30, 0), typeof(string), null, null));
+            Assert.AreEqual(string.Empty, converter.Convert("bad", typeof(string), null, null));
+        }
+
+        // Additional edge case tests
+        [Test]
+        public void BoolToVisibilityConverter_WithNull_ReturnsCollapsed()
+        {
+            var converter = new BoolToVisibilityConverter();
+            Assert.AreEqual(Visibility.Collapsed, converter.Convert(null, typeof(Visibility), null, null));
+        }
+
+        [Test]
+        public void BoolToVisibilityConverter_ConvertBack_WithHidden_ReturnsFalse()
+        {
+            var converter = new BoolToVisibilityConverter();
+            Assert.IsFalse((bool)converter.ConvertBack(Visibility.Hidden, typeof(bool), null, null));
+        }
+
+        [Test]
+        public void CalendarDayTagConverter_WithNullParameter_ReturnsFalse()
+        {
+            var converter = new CalendarDayTagConverter();
+            var day = new CalendarDay { IsSelected = true };
+            Assert.IsFalse((bool)converter.Convert(day, typeof(bool), null, null));
+        }
+
+        [Test]
+        public void CalendarDayTagConverter_WithInvalidProperty_ReturnsFalse()
+        {
+            var converter = new CalendarDayTagConverter();
+            var day = new CalendarDay();
+            Assert.IsFalse((bool)converter.Convert(day, typeof(bool), "NonExistentProperty", null));
+        }
+
+        [Test]
+        public void CalendarDayTagConverter_WithNullValue_ReturnsFalse()
+        {
+            var converter = new CalendarDayTagConverter();
+            Assert.IsFalse((bool)converter.Convert(null, typeof(bool), "IsSelected", null));
+        }
+
+        [Test]
+        public void DateFormatConverter_WithMinValue_FormatsCorrectly()
+        {
+            var converter = new DateFormatConverter();
+            var result = converter.Convert(DateTime.MinValue, typeof(string), null, null);
+            Assert.IsNotNull(result);
+            StringAssert.Contains("01-01-0001", result.ToString());
+        }
+
+        [Test]
+        public void DateFormatConverter_WithMaxValue_FormatsCorrectly()
+        {
+            var converter = new DateFormatConverter();
+            var result = converter.Convert(DateTime.MaxValue, typeof(string), null, null);
+            Assert.IsNotNull(result);
+            StringAssert.Contains("9999", result.ToString());
+        }
+
+        [Test]
+        public void DateFormatConverter_ConvertBack_WithNull_ReturnsNull()
+        {
+            var converter = new DateFormatConverter();
+            Assert.IsNull(converter.ConvertBack(null, typeof(DateTime), null, null));
+        }
+
+        [Test]
+        public void DateFormatConverter_ConvertBack_WithEmptyString_ReturnsNull()
+        {
+            var converter = new DateFormatConverter();
+            Assert.IsNull(converter.ConvertBack("", typeof(DateTime), null, null));
+        }
+
+        [Test]
+        public void ReminderStatusToBrushConverter_WithNull_ReturnsDefaultColor()
+        {
+            var converter = new ReminderStatusToBrushConverter();
+            var result = (SolidColorBrush)converter.Convert(null, typeof(Brush), null, null);
+            Assert.AreEqual(Color.FromRgb(255, 238, 181), result.Color);
+        }
+
+        [Test]
+        public void ReminderStatusToBrushConverter_WithEmptyString_ReturnsDefaultColor()
+        {
+            var converter = new ReminderStatusToBrushConverter();
+            var result = (SolidColorBrush)converter.Convert("", typeof(Brush), null, null);
+            Assert.AreEqual(Color.FromRgb(255, 238, 181), result.Color);
+        }
+
+        [Test]
+        public void ReminderStatusToBrushConverter_CaseInsensitive()
+        {
+            var converter = new ReminderStatusToBrushConverter();
+            var upper = (SolidColorBrush)converter.Convert("ACTIVE", typeof(Brush), null, null);
+            var lower = (SolidColorBrush)converter.Convert("active", typeof(Brush), null, null);
+            var mixed = (SolidColorBrush)converter.Convert("AcTiVe", typeof(Brush), null, null);
+            
+            Assert.AreEqual(upper.Color, lower.Color);
+            Assert.AreEqual(lower.Color, mixed.Color);
+        }
+
+        [Test]
+        public void ReminderStatusToTextColorConverter_WithNull_ReturnsDefaultColor()
+        {
+            var converter = new ReminderStatusToTextColorConverter();
+            var result = (SolidColorBrush)converter.Convert(null, typeof(Brush), null, null);
+            Assert.AreEqual(Color.FromRgb(212, 152, 41), result.Color);
+        }
+
+        [Test]
+        public void ReminderStatusToTextColorConverter_CaseInsensitive()
+        {
+            var converter = new ReminderStatusToTextColorConverter();
+            var upper = (SolidColorBrush)converter.Convert("OVERDUE", typeof(Brush), null, null);
+            var lower = (SolidColorBrush)converter.Convert("overdue", typeof(Brush), null, null);
+            
+            Assert.AreEqual(upper.Color, lower.Color);
+        }
+
+        [Test]
+        public void SecondsToDurationConverter_WithZero_ReturnsZeroDuration()
+        {
+            var converter = new SecondsToDurationConverter();
+            Assert.AreEqual("0:00:00", converter.Convert(0, typeof(string), null, null));
+        }
+
+        [Test]
+        public void SecondsToDurationConverter_WithNegative_HandlesGracefully()
+        {
+            var converter = new SecondsToDurationConverter();
+            var result = converter.Convert(-100, typeof(string), null, null);
+            Assert.IsNotNull(result);
+        }
+
+        [Test]
+        public void SecondsToDurationConverter_WithLargeValue_FormatsCorrectly()
+        {
+            var converter = new SecondsToDurationConverter();
+            var result = converter.Convert(86400, typeof(string), null, null); // 24 hours
+            Assert.AreEqual("24:00:00", result);
+        }
+
+        [Test]
+        public void SecondsToDurationConverter_WithNull_ReturnsDefault()
+        {
+            var converter = new SecondsToDurationConverter();
+            Assert.AreEqual("0:00:00", converter.Convert(null, typeof(string), null, null));
+        }
+
+        [Test]
+        public void SecondsToTimerDisplayConverter_WithZero_ReturnsZero()
+        {
+            var converter = new SecondsToTimerDisplayConverter();
+            Assert.AreEqual("00:00", converter.Convert(0, typeof(string), null, null));
+        }
+
+        [Test]
+        public void SecondsToTimerDisplayConverter_WithNull_ReturnsDefault()
+        {
+            var converter = new SecondsToTimerDisplayConverter();
+            Assert.AreEqual("00:00", converter.Convert(null, typeof(string), null, null));
+        }
+
+        [Test]
+        public void SecondsToTimerDisplayConverter_WithLargeValue_FormatsCorrectly()
+        {
+            var converter = new SecondsToTimerDisplayConverter();
+            var result = converter.Convert(3599, typeof(string), null, null); // 59:59
+            Assert.AreEqual("59:59", result);
+        }
+
+        [Test]
+        public void TimeFormatConverter_WithMidnight_FormatsCorrectly()
+        {
+            var converter = new TimeFormatConverter();
+            Assert.AreEqual("12 AM", converter.Convert(TimeSpan.Zero, typeof(string), null, null));
+        }
+
+        [Test]
+        public void TimeFormatConverter_WithNoon_FormatsCorrectly()
+        {
+            var converter = new TimeFormatConverter();
+            Assert.AreEqual("12 PM", converter.Convert(TimeSpan.FromHours(12), typeof(string), null, null));
+        }
+
+        [Test]
+        public void TimeFormatConverter_WithMinutes_FormatsCorrectly()
+        {
+            var converter = new TimeFormatConverter();
+            Assert.AreEqual("3:45 PM", converter.Convert(new TimeSpan(15, 45, 0), typeof(string), null, null));
+        }
+
+        [Test]
+        public void TimeFormatConverter_WithNull_ReturnsEmpty()
+        {
+            var converter = new TimeFormatConverter();
+            Assert.AreEqual(string.Empty, converter.Convert(null, typeof(string), null, null));
+        }
+
+        [Test]
+        public void TimeFormatConverter_ConvertBack_ReturnsNull()
+        {
+            var converter = new TimeFormatConverter();
+            Assert.IsNull(converter.ConvertBack("3:00 PM", typeof(TimeSpan), null, null));
+        }
+
+        [Test]
+        public void InverseBoolToVisibilityConverter_WithNull_ReturnsVisible()
+        {
+            var converter = new InverseBoolToVisibilityConverter();
+            Assert.AreEqual(Visibility.Visible, converter.Convert(null, typeof(Visibility), null, null));
+        }
+
+        [Test]
+        public void InverseBoolToVisibilityConverter_ConvertBack_WithHidden_ReturnsTrue()
+        {
+            var converter = new InverseBoolToVisibilityConverter();
+            Assert.IsTrue((bool)converter.ConvertBack(Visibility.Hidden, typeof(bool), null, null));
+        }
+
+        [Test]
+        public void IconStrokeConverter_ConvertBack_ThrowsNotImplemented()
+        {
+            var converter = new IconStrokeConverter();
+            Assert.Throws<NotImplementedException>(() => 
+                converter.ConvertBack(Brushes.Black, typeof(bool), null, null));
+        }
+
+        [Test]
+        public void ReminderStatusToBrushConverter_ConvertBack_ReturnsNull()
+        {
+            var converter = new ReminderStatusToBrushConverter();
+            Assert.IsNull(converter.ConvertBack(Brushes.Red, typeof(string), null, null));
+        }
+
+        [Test]
+        public void ReminderStatusToTextColorConverter_ConvertBack_ReturnsNull()
+        {
+            var converter = new ReminderStatusToTextColorConverter();
+            Assert.IsNull(converter.ConvertBack(Brushes.Red, typeof(string), null, null));
+        }
+
+        [Test]
+        public void SecondsToDurationConverter_ConvertBack_ReturnsNull()
+        {
+            var converter = new SecondsToDurationConverter();
+            Assert.IsNull(converter.ConvertBack("1:00:00", typeof(int), null, null));
+        }
+
+        [Test]
+        public void SecondsToTimerDisplayConverter_ConvertBack_ReturnsNull()
+        {
+            var converter = new SecondsToTimerDisplayConverter();
+            Assert.IsNull(converter.ConvertBack("10:30", typeof(int), null, null));
+        }
+
+        [Test]
+        public void CalendarDayTagConverter_WithMultipleProperties_Works()
+        {
+            var converter = new CalendarDayTagConverter();
+            var day = new CalendarDay 
+            { 
+                IsSelected = true, 
+                IsToday = true,
+                HasTasks = false,
+                IsPlaceholder = false
+            };
+
+            Assert.IsTrue((bool)converter.Convert(day, typeof(bool), "IsSelected", null));
+            Assert.IsTrue((bool)converter.Convert(day, typeof(bool), "IsToday", null));
+            Assert.IsFalse((bool)converter.Convert(day, typeof(bool), "HasTasks", null));
+            Assert.IsFalse((bool)converter.Convert(day, typeof(bool), "IsPlaceholder", null));
+        }
+
+        [Test]
+        public void BoolToVisibilityConverter_MultipleInversions_Work()
+        {
+            var converter = new BoolToVisibilityConverter();
+            
+            // Normal
+            Assert.AreEqual(Visibility.Visible, converter.Convert(true, typeof(Visibility), null, null));
+            
+            // Inverse
+            Assert.AreEqual(Visibility.Collapsed, converter.Convert(true, typeof(Visibility), "Inverse", null));
+            
+            // Case insensitive parameter
+            Assert.AreEqual(Visibility.Collapsed, converter.Convert(true, typeof(Visibility), "inverse", null));
+            Assert.AreEqual(Visibility.Collapsed, converter.Convert(true, typeof(Visibility), "INVERSE", null));
+        }
+
+        [Test]
+        public void DateFormatConverter_RoundTrip_PreservesDate()
+        {
+            var converter = new DateFormatConverter();
+            var originalDate = new DateTime(2025, 7, 4);
+            
+            var formatted = converter.Convert(originalDate, typeof(string), null, null);
+            var parsed = converter.ConvertBack(formatted, typeof(DateTime), null, CultureInfo.InvariantCulture);
+            
+            Assert.AreEqual(originalDate, parsed);
+        }
+
+        [Test]
+        public void TimeFormatConverter_WithSeconds_IgnoresSeconds()
+        {
+            var converter = new TimeFormatConverter();
+            var time = new TimeSpan(14, 30, 45); // 2:30:45 PM
+            var result = converter.Convert(time, typeof(string), null, null);
+            
+            StringAssert.Contains("2:30 PM", result.ToString());
+            StringAssert.DoesNotContain("45", result.ToString());
+        }
+    }
+}

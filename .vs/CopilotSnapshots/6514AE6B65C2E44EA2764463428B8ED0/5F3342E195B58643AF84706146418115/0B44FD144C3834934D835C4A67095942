@@ -1,0 +1,93 @@
+﻿using System;
+using System.IO;
+using DesktopTaskAid.Models;
+using DesktopTaskAid.Services;
+using NUnit.Framework;
+
+namespace DesktopTaskAid.Tests
+{
+    [TestFixture]
+    public class StorageServiceNonTestModeTests
+    {
+        private string _fakeAppData;
+        private Func<bool> _origDetector;
+        private Func<string> _origAppDataProvider;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _fakeAppData = Path.Combine(Path.GetTempPath(), "AppData_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_fakeAppData);
+
+            _origDetector = StorageService.UnitTestDetector;
+            _origAppDataProvider = StorageService.AppDataPathProvider;
+
+            // Force non-test mode
+            StorageService.UnitTestDetector = () => false;
+            StorageService.AppDataPathProvider = () => _fakeAppData;
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            StorageService.UnitTestDetector = _origDetector;
+            StorageService.AppDataPathProvider = _origAppDataProvider;
+
+            try { if (Directory.Exists(_fakeAppData)) Directory.Delete(_fakeAppData, true); } catch { }
+        }
+
+        [Test]
+        public void Constructor_CreatesPersistentFolder_WhenMissing()
+        {
+            var expected = Path.Combine(_fakeAppData, "DesktopTaskAid");
+            if (Directory.Exists(expected)) Directory.Delete(expected, true);
+
+            var service = new StorageService();
+            var path = service.GetDataFolderPath();
+            Assert.AreEqual(expected, path);
+            Assert.IsTrue(Directory.Exists(expected));
+        }
+
+        [Test]
+        public void Constructor_LogsIfFolderAlreadyExists()
+        {
+            var expected = Path.Combine(_fakeAppData, "DesktopTaskAid");
+            Directory.CreateDirectory(expected);
+
+            var service = new StorageService();
+            Assert.AreEqual(expected, service.GetDataFolderPath());
+
+            var log = File.ReadAllText(DesktopTaskAid.Services.LoggingService.GetLogFilePath());
+            StringAssert.Contains("Data folder already exists", log);
+        }
+
+        [Test]
+        public void OverloadConstructor_EnsureDirectoryExists_False_DoesNotCreate()
+        {
+            var custom = Path.Combine(_fakeAppData, "customFolder");
+            if (Directory.Exists(custom)) Directory.Delete(custom, true);
+
+            var service = new StorageService(custom, ensureDirectoryExists: false);
+            Assert.AreEqual(custom, service.GetDataFolderPath());
+            Assert.IsFalse(Directory.Exists(custom));
+        }
+
+        [Test]
+        public void SaveState_And_LoadState_RoundTrip_InNonTestMode()
+        {
+            var service = new StorageService();
+            var state = new AppState();
+            state.Tasks.Add(new TaskItem { Name = "PersistMe" });
+            state.CurrentPage = 3;
+            state.PageSize = 20;
+
+            service.SaveState(state);
+
+            var reloaded = service.LoadState();
+            Assert.AreEqual(1, reloaded.Tasks.Count);
+            Assert.AreEqual("PersistMe", reloaded.Tasks[0].Name);
+            Assert.AreEqual(3, reloaded.CurrentPage);
+            Assert.AreEqual(20, reloaded.PageSize);
+        }
+    }
+}

@@ -1,0 +1,146 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using DesktopTaskAid.Models;
+using DesktopTaskAid.ViewModels;
+using DesktopTaskAid.Converters;
+using DesktopTaskAid.Services;
+using NUnit.Framework;
+
+namespace DesktopTaskAid.Tests
+{
+    [TestFixture]
+    [Apartment(ApartmentState.STA)]
+    public class MainViewModelTests
+    {
+        [SetUp]
+        public void Setup()
+        {
+            if (Application.Current == null)
+            {
+                new Application();
+            }
+            Application.Current.Resources.MergedDictionaries.Clear();
+            Application.Current.Resources["IsDarkTheme"] = false; // default light
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            Application.Current.Resources.MergedDictionaries.Clear();
+        }
+
+        [Test]
+        public void Constructor_InitializesCollectionsAndProperties()
+        {
+            var vm = new MainViewModel();
+            Assert.IsNotNull(vm.AllTasks);
+            Assert.IsNotNull(vm.DisplayedTasks);
+            Assert.IsNotNull(vm.CalendarDays);
+            Assert.IsNotNull(vm.DailyTasks);
+            Assert.Greater(vm.PageSize, 0);
+            StringAssert.Contains(DateTime.Now.ToString("MMMM", CultureInfo.InvariantCulture), vm.CurrentMonthDisplay);
+        }
+
+        [Test]
+        public void ToggleTheme_SetsResourceFlagAndTogglesState()
+        {
+            var vm = new MainViewModel();
+            var initial = vm.IsDarkTheme;
+
+            vm.ToggleThemeCommand.Execute(null);
+
+            Assert.AreNotEqual(initial, vm.IsDarkTheme);
+            Assert.AreEqual(vm.IsDarkTheme, (bool)Application.Current.Resources["IsDarkTheme"]);
+        }
+
+        [Test]
+        public void Pagination_Filtering_And_Text()
+        {
+            var vm = new MainViewModel();
+
+            // Seed some tasks
+            vm.AllTasks.Clear();
+            var today = DateTime.Today;
+            for (int i = 0; i < 15; i++)
+            {
+                vm.AllTasks.Add(new TaskItem
+                {
+                    Name = "Task " + i,
+                    DueDate = today.AddDays(i),
+                    DueTime = TimeSpan.FromHours(9),
+                    ReminderStatus = "active",
+                    ReminderLabel = "Label " + i
+                });
+            }
+
+            vm.PageSize = 5;
+            vm.CurrentPage = 1;
+            var firstPageText = vm.PaginationText; // triggers calculation via setters
+            StringAssert.Contains("of 15", firstPageText);
+
+            vm.SearchText = "Task 1"; // matches 1,10,11,12,13,14 => 6 items
+            StringAssert.Contains("of 6", vm.PaginationText);
+        }
+
+        [Test]
+        public void GenerateCalendarDays_ReflectsSelectedMonthAndToday()
+        {
+            var vm = new MainViewModel();
+            vm.CurrentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            vm.SelectedDate = DateTime.Today;
+
+            var hasToday = vm.CalendarDays.Any(d => !d.IsPlaceholder && d.IsToday);
+            Assert.IsTrue(hasToday);
+        }
+
+        [Test]
+        public void SaveAndEditTask_FlowsThroughCollections()
+        {
+            var vm = new MainViewModel();
+
+            // Open add modal and save
+            vm.AddTaskCommand.Execute(null);
+            Assert.IsTrue(vm.IsModalOpen);
+            vm.EditingTask.Name = "New Task";
+            vm.SaveTaskCommand.Execute(null);
+            Assert.IsFalse(vm.IsModalOpen);
+            Assert.IsTrue(vm.AllTasks.Any(t => t.Name == "New Task"));
+
+            // Edit existing
+            var existing = vm.AllTasks.First(t => t.Name == "New Task");
+            vm.EditTaskCommand.Execute(existing);
+            vm.EditingTask.Name = "Updated";
+            vm.SaveTaskCommand.Execute(null);
+            Assert.IsTrue(vm.AllTasks.Any(t => t.Name == "Updated"));
+        }
+
+        [Test]
+        public void IconStrokeConverter_UsesIsDarkThemeResource()
+        {
+            var conv = new IconStrokeConverter();
+
+            Application.Current.Resources["IsDarkTheme"] = true;
+            var dark = (System.Windows.Media.SolidColorBrush)conv.Convert(null, typeof(System.Windows.Media.Brush), null, null);
+            Assert.AreEqual(System.Windows.Media.Colors.White, dark.Color);
+
+            Application.Current.Resources["IsDarkTheme"] = false;
+            var light = (System.Windows.Media.SolidColorBrush)conv.Convert(null, typeof(System.Windows.Media.Brush), null, null);
+            Assert.AreEqual(System.Windows.Media.Color.FromRgb(0x1A, 0x1A, 0x1A), light.Color);
+        }
+
+        [Test]
+        public void InverseBoolToVisibilityConverter_Basic()
+        {
+            var conv = new InverseBoolToVisibilityConverter();
+            Assert.AreEqual(Visibility.Collapsed, conv.Convert(true, typeof(Visibility), null, null));
+            Assert.AreEqual(Visibility.Visible, conv.Convert(false, typeof(Visibility), null, null));
+            Assert.IsTrue((bool)conv.ConvertBack(Visibility.Collapsed, typeof(bool), null, null));
+            Assert.IsFalse((bool)conv.ConvertBack(Visibility.Visible, typeof(bool), null, null));
+        }
+    }
+}
