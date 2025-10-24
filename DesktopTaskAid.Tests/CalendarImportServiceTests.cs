@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -21,6 +22,7 @@ namespace DesktopTaskAid.Tests
     public class CalendarImportServiceTests
     {
         private const string ModuleName = "Google Calendar Import";
+        private const string ValidCredentialJson = "{\"installed\":{\"client_id\":\"id\",\"client_secret\":\"secret\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\"]}}";
 
         private string _tempDirectory;
         private string _dataDirectory;
@@ -918,8 +920,7 @@ namespace DesktopTaskAid.Tests
         public void TC_CAL_037_ValidateCredentialFile_ExistingValidFile_YieldsValidState()
         {
             var credPath = Path.Combine(_tempDirectory, "google-credentials.json");
-            var json = "{\"installed\":{\"client_id\":\"id\",\"client_secret\":\"secret\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\"]}}";
-            File.WriteAllText(credPath, json);
+            File.WriteAllText(credPath, ValidCredentialJson);
 
             using (var service = new CalendarImportService(_storageService, _calendarClient, _tempDirectory, enableWatcher: false))
             {
@@ -937,9 +938,7 @@ namespace DesktopTaskAid.Tests
             _service.CredentialsChanged += (s, e) => Interlocked.Increment(ref fired);
 
             var path = Path.Combine(_tempDirectory, "google-credentials.json");
-            var valid = "{\"installed\":{\"client_id\":\"id\",\"client_secret\":\"secret\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\"]}}";
-
-            File.WriteAllText(path, valid);
+            File.WriteAllText(path, ValidCredentialJson);
             await Task.Delay(400);
 
             File.WriteAllText(path, "not json");
@@ -949,6 +948,40 @@ namespace DesktopTaskAid.Tests
             await Task.Delay(400);
 
             Assert.GreaterOrEqual(fired, 3);
+        }
+
+        [Test]
+        public async Task TC_CAL_049_Watcher_DeleteFile_SetsMissingState()
+        {
+            _service.Dispose();
+            _service = new CalendarImportService(_storageService, _calendarClient, _tempDirectory, enableWatcher: true);
+
+            var path = Path.Combine(_tempDirectory, "google-credentials.json");
+            File.WriteAllText(path, ValidCredentialJson);
+            await WaitForCredentialStatusAsync(CredentialStatus.Valid);
+
+            File.Delete(path);
+            var state = await WaitForCredentialStatusAsync(CredentialStatus.Missing);
+
+            Assert.AreEqual(CredentialStatus.Missing, state.Status);
+            StringAssert.Contains("Add google-credentials.json", state.Message);
+        }
+
+        [Test]
+        public async Task TC_CAL_050_Watcher_InvalidContent_SetsInvalidState()
+        {
+            _service.Dispose();
+            _service = new CalendarImportService(_storageService, _calendarClient, _tempDirectory, enableWatcher: true);
+
+            var path = Path.Combine(_tempDirectory, "google-credentials.json");
+            File.WriteAllText(path, ValidCredentialJson);
+            await WaitForCredentialStatusAsync(CredentialStatus.Valid);
+
+            File.WriteAllText(path, "not json");
+            var state = await WaitForCredentialStatusAsync(CredentialStatus.Invalid);
+
+            Assert.AreEqual(CredentialStatus.Invalid, state.Status);
+            StringAssert.Contains("valid JSON", state.Message);
         }
 
         [Test]
@@ -1140,11 +1173,29 @@ namespace DesktopTaskAid.Tests
             TestContext.WriteLine(string.Empty);
         }
 
+        private async Task<CredentialState> WaitForCredentialStatusAsync(CredentialStatus expected, int timeoutMilliseconds = 5000)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            CredentialState lastState = null;
+
+            while (stopwatch.ElapsedMilliseconds < timeoutMilliseconds)
+            {
+                lastState = _service.GetCredentialState();
+                if (lastState.Status == expected)
+                {
+                    return lastState;
+                }
+
+                await Task.Delay(100);
+            }
+
+            throw new AssertionException($"Expected credential status {expected} within {timeoutMilliseconds}ms but last state was {lastState?.Status}.");
+        }
+
         private async Task WriteValidCredentialsAsync()
         {
             var credentialPath = Path.Combine(_tempDirectory, "google-credentials.json");
-            var json = "{\"installed\":{\"client_id\":\"id\",\"client_secret\":\"secret\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\"]}}";
-            File.WriteAllText(credentialPath, json);
+            File.WriteAllText(credentialPath, ValidCredentialJson);
 
             await _service.ImportCredentialsAsync(credentialPath);
         }
