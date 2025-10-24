@@ -1,0 +1,57 @@
+﻿using System;
+using System.Globalization;
+using System.Reflection;
+using System.Threading;
+using System.Windows;
+using System.Windows.Threading;
+using DesktopTaskAid;
+using DesktopTaskAid.Services;
+using NUnit.Framework;
+
+namespace DesktopTaskAid.Tests
+{
+    [TestFixture]
+    [Apartment(ApartmentState.STA)]
+    public class AppTests
+    {
+        [SetUp]
+        public void Setup()
+        {
+            if (Application.Current == null)
+            {
+                new Application();
+            }
+        }
+
+        [Test]
+        public void OnStartup_SetsEnglishCulture_And_SubscribeHandlers()
+        {
+            var app = new App();
+            var mi = typeof(App).GetMethod("OnStartup", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(mi, "OnStartup not found");
+
+            // pass null StartupEventArgs to avoid ctor issues in test runtime
+            mi.Invoke(app, new object[] { null });
+
+            Assert.AreEqual("en-US", CultureInfo.CurrentCulture.Name);
+            Assert.AreEqual("en-US", CultureInfo.CurrentUICulture.Name);
+        }
+
+        [Test]
+        public void CurrentDomain_UnhandledException_LogsWithoutShowing_WhenNotTerminating()
+        {
+            var app = new App();
+            var mi = typeof(App).GetMethod("CurrentDomain_UnhandledException", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(mi);
+
+            var ex = new InvalidOperationException("boom");
+            var args = new UnhandledExceptionEventArgs(ex, false);
+
+            // Should not throw or terminate
+            mi.Invoke(app, new object[] { null, args });
+
+            var log = System.IO.File.ReadAllText(LoggingService.GetLogFilePath());
+            StringAssert.Contains("UNHANDLED EXCEPTION (CurrentDomain)", log);
+        }
+    }
+}

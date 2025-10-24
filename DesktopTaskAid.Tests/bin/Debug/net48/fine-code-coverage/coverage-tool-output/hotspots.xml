@@ -1,2 +1,18 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Hotspots />
+<Hotspots>
+  <Hotspot>
+    <Assembly>DesktopTaskAid</Assembly>
+    <Class>DesktopTaskAid.Converters.IconStrokeConverter</Class>
+    <MethodName>Convert(...)</MethodName>
+    <ShortName />
+    <Line>12</Line>
+    <FileIndex>0</FileIndex>
+    <Metrics>
+      <Metric>
+        <Name>Cyclomatic complexity</Name>
+        <Exceeded>true</Exceeded>
+        <Value>42</Value>
+      </Metric>
+    </Metrics>
+  </Hotspot>
+</Hotspots>

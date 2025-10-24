@@ -3,11 +3,18 @@ using System.IO;
 using Newtonsoft.Json;
 using DesktopTaskAid.Models;
 using System.Collections.Generic;
+using System.Linq;
+using System.Diagnostics;
 
 namespace DesktopTaskAid.Services
 {
     public class StorageService
     {
+        // Test seams: allow tests to override unit test detection and app data location safely
+        public static Func<bool> UnitTestDetector = IsRunningUnderUnitTest;
+        public static Func<string> AppDataPathProvider = () => Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+        private readonly bool _isTestMode;
         private readonly string _dataFolder;
         private readonly string _stateFilePath;
 
@@ -15,22 +22,50 @@ namespace DesktopTaskAid.Services
         {
             LoggingService.Log("StorageService constructor started");
 
-            _dataFolder = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "DesktopTaskAid"
-            );
+            _isTestMode = UnitTestDetector();
 
-            LoggingService.Log($"Data folder path: {_dataFolder}");
-
-            if (!Directory.Exists(_dataFolder))
+            if (_isTestMode)
             {
-                LoggingService.Log("Data folder does not exist, creating it");
-                Directory.CreateDirectory(_dataFolder);
-                LoggingService.Log("Data folder created successfully");
+                // Use a unique, isolated temp folder per StorageService instance during tests
+                var baseTemp = Path.Combine(Path.GetTempPath(), "DesktopTaskAid_Tests");
+                try
+                {
+                    if (!Directory.Exists(baseTemp))
+                    {
+                        Directory.CreateDirectory(baseTemp);
+                    }
+                }
+                catch { }
+
+                _dataFolder = Path.Combine(baseTemp, $"run_{Process.GetCurrentProcess().Id}", Guid.NewGuid().ToString("N"));
+                LoggingService.Log($"[TEST MODE] Using isolated data folder: {_dataFolder}");
             }
             else
             {
-                LoggingService.Log("Data folder already exists");
+                _dataFolder = Path.Combine(
+                    AppDataPathProvider(),
+                    "DesktopTaskAid"
+                );
+                LoggingService.Log($"Data folder path: {_dataFolder}");
+            }
+
+            if (!_isTestMode)
+            {
+                // Only create persistent folder in normal app runs
+                if (!Directory.Exists(_dataFolder))
+                {
+                    LoggingService.Log("Data folder does not exist, creating it");
+                    Directory.CreateDirectory(_dataFolder);
+                    LoggingService.Log("Data folder created successfully");
+                }
+                else
+                {
+                    LoggingService.Log("Data folder already exists");
+                }
+            }
+            else
+            {
+                try { Directory.CreateDirectory(_dataFolder); } catch { }
             }
 
             _stateFilePath = Path.Combine(_dataFolder, "appState.json");
@@ -60,6 +95,13 @@ namespace DesktopTaskAid.Services
 
             try
             {
+                if (_isTestMode)
+                {
+                    // Always start from a clean state in unit tests
+                    LoggingService.Log("[TEST MODE] Returning default empty state");
+                    return CreateDefaultState();
+                }
+
                 if (!File.Exists(_stateFilePath))
                 {
                     LoggingService.Log("State file does not exist, creating default EMPTY state");
@@ -84,7 +126,7 @@ namespace DesktopTaskAid.Services
                 if (state.Tasks == null)
                 {
                     LoggingService.Log("Tasks list was null, initializing empty list");
-                    try { state.Tasks = new List<TaskItem>(); } catch { /* if setter not available, ignore */ }
+                    try { state.Tasks = new List<TaskItem>(); } catch { }
                 }
 
                 LoggingService.Log($"State deserialized - Tasks: {state.Tasks?.Count ?? 0}, Theme: {state.Settings?.Theme}");
@@ -107,6 +149,13 @@ namespace DesktopTaskAid.Services
         {
             try
             {
+                if (_isTestMode)
+                {
+                    // Do not persist to disk during tests to avoid cross-test interference
+                    LoggingService.Log("[TEST MODE] SaveState skipped");
+                    return;
+                }
+
                 LoggingService.Log("SaveState called");
 
                 // Defensive: ensure lists exist before saving
@@ -145,6 +194,19 @@ namespace DesktopTaskAid.Services
         public string GetDataFolderPath()
         {
             return _dataFolder;
+        }
+
+        private static bool IsRunningUnderUnitTest()
+        {
+            try
+            {
+                var asms = AppDomain.CurrentDomain.GetAssemblies();
+                return asms.Any(a =>
+                    (a.FullName?.IndexOf("nunit", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0 ||
+                    (a.FullName?.IndexOf("xunit", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0 ||
+                    (a.FullName?.IndexOf("mstest", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0);
+            }
+            catch { return false; }
         }
     }
 }

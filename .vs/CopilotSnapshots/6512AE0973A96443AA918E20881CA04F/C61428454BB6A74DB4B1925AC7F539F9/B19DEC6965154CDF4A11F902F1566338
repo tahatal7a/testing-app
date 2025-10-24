@@ -1,0 +1,418 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using DesktopTaskAid.Models;
+using DesktopTaskAid.Services;
+using NUnit.Framework;
+
+namespace DesktopTaskAid.Tests
+{
+    [TestFixture]
+    public class StorageServiceTests
+    {
+        private string _tempDirectory;
+        private StorageService _service;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _tempDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_tempDirectory);
+            _service = new StorageService(_tempDirectory);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            if (Directory.Exists(_tempDirectory))
+            {
+                Directory.Delete(_tempDirectory, true);
+            }
+        }
+
+        [Test]
+        public void Constructor_WithNullPath_Throws()
+        {
+            Assert.Throws<ArgumentException>(() => new StorageService(null));
+        }
+
+        [Test]
+        public void LoadState_WhenFileMissing_ReturnsDefaultState()
+        {
+            var state = _service.LoadState();
+
+            Assert.IsNotNull(state);
+            Assert.IsNotNull(state.Tasks);
+            Assert.IsNotNull(state.Settings);
+            Assert.AreEqual(0, state.Tasks.Count);
+        }
+
+        [Test]
+        public void SaveAndLoadState_RoundTripsData()
+        {
+            var state = new AppState
+            {
+                Tasks = new List<TaskItem>
+                {
+                    new TaskItem { Name = "Task One", DueDate = DateTime.Today }
+                },
+                CurrentPage = 2,
+                PageSize = 5
+            };
+
+            _service.SaveState(state);
+
+            var reloaded = _service.LoadState();
+
+            Assert.AreEqual(1, reloaded.Tasks.Count);
+            Assert.AreEqual("Task One", reloaded.Tasks[0].Name);
+            Assert.AreEqual(2, reloaded.CurrentPage);
+            Assert.AreEqual(5, reloaded.PageSize);
+        }
+
+        [Test]
+        public void LoadState_WithInvalidJson_ReturnsDefault()
+        {
+            File.WriteAllText(Path.Combine(_tempDirectory, "appState.json"), "not json");
+
+            var state = _service.LoadState();
+
+            Assert.IsNotNull(state);
+            Assert.AreEqual(0, state.Tasks.Count);
+        }
+
+        [Test]
+        public void SaveState_WithNullTasks_SerialisesEmptyList()
+        {
+            var state = new AppState
+            {
+                Tasks = null
+            };
+
+            _service.SaveState(state);
+
+            var json = File.ReadAllText(Path.Combine(_tempDirectory, "appState.json"));
+            StringAssert.Contains("\"Tasks\": []", json);
+        }
+
+        [Test]
+        public void GetDataFolderPath_ReturnsDirectory()
+        {
+            Assert.AreEqual(_tempDirectory, _service.GetDataFolderPath());
+        }
+
+        [Test]
+        public void Constructor_WithEmptyPath_Throws()
+        {
+            Assert.Throws<ArgumentException>(() => new StorageService("   "));
+        }
+
+        [Test]
+        public void Constructor_WithNonExistentPath_CreatesDirectory()
+        {
+            var newPath = Path.Combine(_tempDirectory, "subdir");
+            Assert.IsFalse(Directory.Exists(newPath));
+
+            var service = new StorageService(newPath);
+
+            Assert.IsTrue(Directory.Exists(newPath));
+            Assert.AreEqual(newPath, service.GetDataFolderPath());
+        }
+
+        [Test]
+        public void Constructor_WithEnsureDirectoryExistsFalse_DoesNotCreateDirectory()
+        {
+            var newPath = Path.Combine(_tempDirectory, "noexist");
+            var service = new StorageService(newPath, ensureDirectoryExists: false);
+
+            Assert.IsFalse(Directory.Exists(newPath));
+            Assert.AreEqual(newPath, service.GetDataFolderPath());
+        }
+
+        [Test]
+        public void LoadState_WithNullDeserializedState_ReturnsDefault()
+        {
+            // Write JSON that deserializes to null (edge case)
+            File.WriteAllText(Path.Combine(_tempDirectory, "appState.json"), "null");
+
+            var state = _service.LoadState();
+
+            Assert.IsNotNull(state);
+            Assert.IsNotNull(state.Tasks);
+            Assert.AreEqual(0, state.Tasks.Count);
+        }
+
+        [Test]
+        public void LoadState_WithNullTasksList_InitializesEmptyList()
+        {
+            // Write JSON with Tasks explicitly null
+            var json = "{\"Tasks\":null,\"Settings\":{\"Theme\":\"dark\"},\"Calendar\":{},\"Timer\":{},\"CurrentPage\":1,\"PageSize\":10}";
+            File.WriteAllText(Path.Combine(_tempDirectory, "appState.json"), json);
+
+            var state = _service.LoadState();
+
+            Assert.IsNotNull(state);
+            Assert.IsNotNull(state.Tasks);
+            Assert.AreEqual(0, state.Tasks.Count);
+            Assert.AreEqual("dark", state.Settings.Theme);
+        }
+
+        [Test]
+        public void SaveState_WithNullState_HandlesGracefully()
+        {
+            // Should not throw
+            Assert.DoesNotThrow(() => _service.SaveState(null));
+        }
+
+        [Test]
+        public void LoadState_CallsRefreshDailyTracking()
+        {
+            var state = new AppState();
+            state.Timer.DoneTodayDate = DateTime.Today.AddDays(-1);
+            state.Timer.DoneTodaySeconds = 1000;
+
+            _service.SaveState(state);
+
+            var reloaded = _service.LoadState();
+
+            // RefreshDailyTracking should have reset DoneTodaySeconds since date changed
+            Assert.AreEqual(DateTime.Today, reloaded.Timer.DoneTodayDate);
+            Assert.AreEqual(0, reloaded.Timer.DoneTodaySeconds);
+        }
+
+        [Test]
+        public void LoadState_WithCorruptedFile_ReturnsDefault()
+        {
+            var path = Path.Combine(_tempDirectory, "appState.json");
+            // Write incomplete JSON
+            File.WriteAllText(path, "{\"Tasks\":[{\"Name\":\"Test\",");
+
+            var state = _service.LoadState();
+
+            Assert.IsNotNull(state);
+            Assert.IsNotNull(state.Tasks);
+            Assert.AreEqual(0, state.Tasks.Count);
+        }
+
+        [Test]
+        public void SaveState_PreservesTimerState()
+        {
+            var state = new AppState();
+            state.Timer.DurationSeconds = 1800;
+            state.Timer.RemainingSeconds = 900;
+            state.Timer.DoneTodaySeconds = 3600;
+
+            _service.SaveState(state);
+
+            var reloaded = _service.LoadState();
+
+            Assert.AreEqual(1800, reloaded.Timer.DurationSeconds);
+            Assert.AreEqual(900, reloaded.Timer.RemainingSeconds);
+            Assert.AreEqual(3600, reloaded.Timer.DoneTodaySeconds);
+        }
+
+        [Test]
+        public void SaveState_PreservesCalendarState()
+        {
+            var state = new AppState();
+            var testMonth = new DateTime(2025, 6, 1);
+            var testDate = new DateTime(2025, 6, 15);
+            state.Calendar.CurrentMonth = testMonth;
+            state.Calendar.SelectedDate = testDate;
+
+            _service.SaveState(state);
+
+            var reloaded = _service.LoadState();
+
+            Assert.AreEqual(testMonth, reloaded.Calendar.CurrentMonth);
+            Assert.AreEqual(testDate, reloaded.Calendar.SelectedDate);
+        }
+
+        [Test]
+        public void SaveState_PreservesAppSettings()
+        {
+            var state = new AppState();
+            state.Settings.Theme = "dark";
+            state.Settings.HelperEnabled = true;
+
+            _service.SaveState(state);
+
+            var reloaded = _service.LoadState();
+
+            Assert.AreEqual("dark", reloaded.Settings.Theme);
+            Assert.IsTrue(reloaded.Settings.HelperEnabled);
+        }
+
+        [Test]
+        public void LoadState_WithTasksDueInPast_LoadsCorrectly()
+        {
+            var state = new AppState();
+            state.Tasks.Add(new TaskItem
+            {
+                Name = "Past Task",
+                DueDate = DateTime.Today.AddDays(-5),
+                DueTime = TimeSpan.FromHours(10)
+            });
+
+            _service.SaveState(state);
+
+            var reloaded = _service.LoadState();
+
+            Assert.AreEqual(1, reloaded.Tasks.Count);
+            Assert.AreEqual("Past Task", reloaded.Tasks[0].Name);
+            Assert.IsTrue(reloaded.Tasks[0].DueDate < DateTime.Today);
+        }
+
+        [Test]
+        public void TimerState_Reset_SetsPropertiesCorrectly()
+        {
+            var timer = new TimerState();
+            timer.RemainingSeconds = 100;
+            timer.IsRunning = true;
+
+            timer.Reset();
+
+            Assert.AreEqual(timer.DurationSeconds, timer.RemainingSeconds);
+            Assert.IsFalse(timer.IsRunning);
+        }
+
+        [Test]
+        public void TimerState_RefreshDailyTracking_SameDay_PreservesSeconds()
+        {
+            var timer = new TimerState();
+            timer.DoneTodayDate = DateTime.Today;
+            timer.DoneTodaySeconds = 500;
+
+            timer.RefreshDailyTracking();
+
+            Assert.AreEqual(DateTime.Today, timer.DoneTodayDate);
+            Assert.AreEqual(500, timer.DoneTodaySeconds);
+        }
+
+        [Test]
+        public void TimerState_RefreshDailyTracking_DifferentDay_ResetsSeconds()
+        {
+            var timer = new TimerState();
+            timer.DoneTodayDate = DateTime.Today.AddDays(-1);
+            timer.DoneTodaySeconds = 1000;
+
+            timer.RefreshDailyTracking();
+
+            Assert.AreEqual(DateTime.Today, timer.DoneTodayDate);
+            Assert.AreEqual(0, timer.DoneTodaySeconds);
+        }
+
+        [Test]
+        public void AppState_Constructor_InitializesAllProperties()
+        {
+            var state = new AppState();
+
+            Assert.IsNotNull(state.Tasks);
+            Assert.IsNotNull(state.Settings);
+            Assert.IsNotNull(state.Calendar);
+            Assert.IsNotNull(state.Timer);
+            Assert.AreEqual(1, state.CurrentPage);
+            Assert.AreEqual(10, state.PageSize);
+        }
+
+        [Test]
+        public void AppSettings_Constructor_InitializesDefaults()
+        {
+            var settings = new AppSettings();
+
+            Assert.AreEqual("light", settings.Theme);
+            Assert.IsFalse(settings.HelperEnabled);
+        }
+
+        [Test]
+        public void CalendarState_Constructor_InitializesToCurrentMonth()
+        {
+            var calendar = new CalendarState();
+
+            var expectedMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            Assert.AreEqual(expectedMonth, calendar.CurrentMonth);
+            Assert.AreEqual(DateTime.Today, calendar.SelectedDate);
+        }
+
+        [Test]
+        public void TimerState_Constructor_InitializesDefaults()
+        {
+            var timer = new TimerState();
+
+            Assert.AreEqual(25 * 60, timer.DurationSeconds);
+            Assert.AreEqual(25 * 60, timer.RemainingSeconds);
+            Assert.IsFalse(timer.IsRunning);
+            Assert.AreEqual(0, timer.DoneTodaySeconds);
+            Assert.AreEqual(DateTime.Today, timer.DoneTodayDate);
+        }
+
+        [Test]
+        public void SaveState_WithComplexTaskData_PreservesAllFields()
+        {
+            var state = new AppState();
+            state.Tasks.Add(new TaskItem
+            {
+                Name = "Complex Task",
+                DueDate = new DateTime(2025, 7, 20),
+                DueTime = new TimeSpan(14, 30, 0),
+                ReminderStatus = "active",
+                ReminderLabel = "Friday, Jul 20 - 2:30 PM",
+                ExternalId = "ext123",
+                CreatedAt = new DateTime(2025, 1, 1)
+            });
+
+            _service.SaveState(state);
+
+            var reloaded = _service.LoadState();
+
+            Assert.AreEqual(1, reloaded.Tasks.Count);
+            var task = reloaded.Tasks[0];
+            Assert.AreEqual("Complex Task", task.Name);
+            Assert.AreEqual(new DateTime(2025, 7, 20), task.DueDate);
+            Assert.AreEqual(new TimeSpan(14, 30, 0), task.DueTime);
+            Assert.AreEqual("active", task.ReminderStatus);
+            Assert.AreEqual("Friday, Jul 20 - 2:30 PM", task.ReminderLabel);
+            Assert.AreEqual("ext123", task.ExternalId);
+            Assert.AreEqual(new DateTime(2025, 1, 1), task.CreatedAt);
+        }
+
+        [Test]
+        public void LoadState_WithReadOnlyFile_ReturnsDefault()
+        {
+            var state = new AppState();
+            _service.SaveState(state);
+
+            var path = Path.Combine(_tempDirectory, "appState.json");
+            var fileInfo = new FileInfo(path);
+            fileInfo.IsReadOnly = true;
+
+            try
+            {
+                // Try to load - should succeed
+                var reloaded = _service.LoadState();
+                Assert.IsNotNull(reloaded);
+            }
+            finally
+            {
+                fileInfo.IsReadOnly = false;
+            }
+        }
+
+        [Test]
+        public void SaveState_MultipleTimes_OverwritesFile()
+        {
+            var state1 = new AppState();
+            state1.Tasks.Add(new TaskItem { Name = "First" });
+            _service.SaveState(state1);
+
+            var state2 = new AppState();
+            state2.Tasks.Add(new TaskItem { Name = "Second" });
+            _service.SaveState(state2);
+
+            var reloaded = _service.LoadState();
+
+            Assert.AreEqual(1, reloaded.Tasks.Count);
+            Assert.AreEqual("Second", reloaded.Tasks[0].Name);
+        }
+    }
+}

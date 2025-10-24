@@ -1,0 +1,58 @@
+﻿using System;
+using System.Globalization;
+using System.Windows;
+using System.Windows.Data;
+using System.Windows.Media;
+
+namespace DesktopTaskAid.Converters
+{
+    public class IconStrokeConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            // Prefer an explicit resource flag if present (easier to unit test and more robust)
+            try
+            {
+                if (Application.Current != null && Application.Current.Resources.Contains("IsDarkTheme"))
+                {
+                    var flag = Application.Current.Resources["IsDarkTheme"] as bool?;
+                    if (flag.HasValue)
+                    {
+                        return flag.Value ? Brushes.White : new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A));
+                    }
+                }
+            }
+            catch
+            {
+                // ignore and fallback to dictionary-based detection
+            }
+
+            // Fallback: Check if the first merged dictionary source name contains "darkTheme"
+            var isDark = false;
+
+            try
+            {
+                if (Application.Current?.Resources?.MergedDictionaries != null && Application.Current.Resources.MergedDictionaries.Count > 0)
+                {
+                    var theme = Application.Current.Resources.MergedDictionaries[0];
+                    if (theme?.Source != null && theme.Source.ToString().IndexOf("darkTheme", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        isDark = true;
+                    }
+                }
+            }
+            catch
+            {
+                // ignore theme detection failures
+            }
+
+            // Return white for dark theme, dark gray for light theme
+            return isDark ? Brushes.White : new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A));
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

@@ -1,0 +1,37 @@
+﻿using System;
+using System.Globalization;
+using System.Reflection;
+using System.Runtime.Serialization;
+using System.Threading;
+using System.Windows;
+using System.Windows.Threading;
+using DesktopTaskAid;
+using DesktopTaskAid.Services;
+using NUnit.Framework;
+
+namespace DesktopTaskAid.Tests
+{
+    [TestFixture]
+    [Apartment(ApartmentState.STA)]
+    public class AppMoreTests
+    {
+        [Test]
+        public void DispatcherUnhandledException_HandledAndLogged()
+        {
+            // Use uninitialized instance to bypass multiple Application construction
+            object app = FormatterServices.GetUninitializedObject(typeof(App));
+            var mi = typeof(App).GetMethod("App_DispatcherUnhandledException", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(mi);
+
+            var ex = new InvalidOperationException("oops");
+            var args = new DispatcherUnhandledExceptionEventArgs(null, ex);
+
+            // Should set Handled = true and log without throwing
+            Assert.DoesNotThrow(() => mi.Invoke(app, new object[] { null, args }));
+            Assert.IsTrue(args.Handled);
+
+            var log = System.IO.File.ReadAllText(LoggingService.GetLogFilePath());
+            StringAssert.Contains("UNHANDLED EXCEPTION (Dispatcher)", log);
+        }
+    }
+}

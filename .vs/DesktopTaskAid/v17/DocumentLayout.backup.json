@@ -1,0 +1,402 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\mainwindowtests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\mainwindowtests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\storageservicecoveragetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\storageservicecoveragetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DBB1FAB2-0DBB-885B-7FB4-1BE572824463}|DesktopTaskAid.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\services\\storageservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DBB1FAB2-0DBB-885B-7FB4-1BE572824463}|DesktopTaskAid.csproj|solutionrelative:services\\storageservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\mainviewmodeltests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\mainviewmodeltests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\mainwindowandviewmodeltests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\mainwindowandviewmodeltests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DBB1FAB2-0DBB-885B-7FB4-1BE572824463}|DesktopTaskAid.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DBB1FAB2-0DBB-885B-7FB4-1BE572824463}|DesktopTaskAid.csproj|solutionrelative:mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\mainviewmodelmoretests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\mainviewmodelmoretests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\convertertests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\convertertests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DBB1FAB2-0DBB-885B-7FB4-1BE572824463}|DesktopTaskAid.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\services\\calendarimportservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DBB1FAB2-0DBB-885B-7FB4-1BE572824463}|DesktopTaskAid.csproj|solutionrelative:services\\calendarimportservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DBB1FAB2-0DBB-885B-7FB4-1BE572824463}|DesktopTaskAid.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\converters\\iconstrokeconverter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DBB1FAB2-0DBB-885B-7FB4-1BE572824463}|DesktopTaskAid.csproj|solutionrelative:converters\\iconstrokeconverter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DBB1FAB2-0DBB-885B-7FB4-1BE572824463}|DesktopTaskAid.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DBB1FAB2-0DBB-885B-7FB4-1BE572824463}|DesktopTaskAid.csproj|solutionrelative:viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\storageservicetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\storageservicetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\calendarimportservicetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\calendarimportservicetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\relaycommandtests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\relaycommandtests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\viewmodelbasetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\viewmodelbasetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\iconstrokeconvertermoretests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\iconstrokeconvertermoretests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\mainviewmodeledgetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\mainviewmodeledgetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\storageservicemoretests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\storageservicemoretests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\apptests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\apptests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\storageservicepersistencetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\storageservicepersistencetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\storageservicenontestmodetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\storageservicenontestmodetests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|c:\\users\\talha\\downloads\\test-app-main\\test-app-main\\desktoptaskaid.tests\\loggingservicemoretests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2318E1F7-69E2-42EF-BC38-B443D4C683DF}|DesktopTaskAid.Tests\\DesktopTaskAid.Tests.csproj|solutionrelative:desktoptaskaid.tests\\loggingservicemoretests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 6,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "LoggingServiceMoreTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\LoggingServiceMoreTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\LoggingServiceMoreTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\LoggingServiceMoreTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\LoggingServiceMoreTests.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACMAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T05:07:42.876Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "StorageServiceNonTestModeTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\StorageServiceNonTestModeTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\StorageServiceNonTestModeTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\StorageServiceNonTestModeTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\StorageServiceNonTestModeTests.cs",
+              "ViewState": "AgIAAD4AAAAAAAAAAABhwEUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T04:49:22.368Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{e1b7d1f8-9b3c-49b1-8f4f-bfc63a88835d}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "StorageServiceCoverageTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\StorageServiceCoverageTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\StorageServiceCoverageTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\StorageServiceCoverageTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\StorageServiceCoverageTests.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAGYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T04:43:26.984Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "StorageService.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\Services\\StorageService.cs",
+              "RelativeDocumentMoniker": "Services\\StorageService.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\Services\\StorageService.cs",
+              "RelativeToolTip": "Services\\StorageService.cs",
+              "ViewState": "AgIAACwAAAAAAAAAAAAowC8AAAAQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-23T23:35:45.698Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MainWindowTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\MainWindowTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\MainWindowTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\MainWindowTests.cs*",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\MainWindowTests.cs*",
+              "ViewState": "AgIAAFAAAAAAAAAAAAAAAFEAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T04:14:37.867Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "AppTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\AppTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\AppTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\AppTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\AppTests.cs",
+              "ViewState": "AgIAADMAAAAAAAAAAABRwDYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T04:14:15.286Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "StorageServicePersistenceTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\StorageServicePersistenceTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\StorageServicePersistenceTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\StorageServicePersistenceTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\StorageServicePersistenceTests.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T04:14:52.88Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "ViewModelBaseTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\ViewModelBaseTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\ViewModelBaseTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\ViewModelBaseTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\ViewModelBaseTests.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAC8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T03:52:09.318Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "RelayCommandTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\RelayCommandTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\RelayCommandTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\RelayCommandTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\RelayCommandTests.cs",
+              "ViewState": "AgIAADUAAAAAAAAAAEBVwDkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T03:51:54.877Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "IconStrokeConverterMoreTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\IconStrokeConverterMoreTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\IconStrokeConverterMoreTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\IconStrokeConverterMoreTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\IconStrokeConverterMoreTests.cs",
+              "ViewState": "AgIAAC4AAAAAAAAAAMBdwDQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T03:52:15.73Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "MainViewModelEdgeTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\MainViewModelEdgeTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\MainViewModelEdgeTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\MainViewModelEdgeTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\MainViewModelEdgeTests.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAC0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T03:52:22.615Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "MainViewModelTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\MainViewModelTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\MainViewModelTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\MainViewModelTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\MainViewModelTests.cs",
+              "ViewState": "AgIAADkBAAAAAAAAAAAAAD4BAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-23T23:09:32.033Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "StorageServiceMoreTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\StorageServiceMoreTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\StorageServiceMoreTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\StorageServiceMoreTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\StorageServiceMoreTests.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T03:52:29.432Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "CalendarImportServiceTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\CalendarImportServiceTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\CalendarImportServiceTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\CalendarImportServiceTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\CalendarImportServiceTests.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAxwPAEAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T03:31:44.681Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "MainWindowAndViewModelTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\MainWindowAndViewModelTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\MainWindowAndViewModelTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\MainWindowAndViewModelTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\MainWindowAndViewModelTests.cs",
+              "ViewState": "AgIAAJIDAAAAAAAAAAAkwJ0DAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T02:52:38.268Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "MainWindow.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\MainWindow.xaml.cs",
+              "RelativeDocumentMoniker": "MainWindow.xaml.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\MainWindow.xaml.cs",
+              "RelativeToolTip": "MainWindow.xaml.cs",
+              "ViewState": "AgIAAAcAAAAAAAAAAAAIwAsAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T02:50:03.005Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "StorageServiceTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\StorageServiceTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\StorageServiceTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\StorageServiceTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\StorageServiceTests.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAxwGgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T02:36:59.2Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "MainViewModelMoreTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\MainViewModelMoreTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\MainViewModelMoreTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\MainViewModelMoreTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\MainViewModelMoreTests.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAFIAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-23T23:13:43.054Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "MainViewModel.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\ViewModels\\MainViewModel.cs",
+              "RelativeDocumentMoniker": "ViewModels\\MainViewModel.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\ViewModels\\MainViewModel.cs",
+              "RelativeToolTip": "ViewModels\\MainViewModel.cs",
+              "ViewState": "AgIAAOwDAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-23T23:08:50.737Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "IconStrokeConverter.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\Converters\\IconStrokeConverter.cs",
+              "RelativeDocumentMoniker": "Converters\\IconStrokeConverter.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\Converters\\IconStrokeConverter.cs",
+              "RelativeToolTip": "Converters\\IconStrokeConverter.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAxwFUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-23T23:07:38.319Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "ConverterTests.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\ConverterTests.cs",
+              "RelativeDocumentMoniker": "DesktopTaskAid.Tests\\ConverterTests.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\DesktopTaskAid.Tests\\ConverterTests.cs",
+              "RelativeToolTip": "DesktopTaskAid.Tests\\ConverterTests.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAJYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-23T22:46:34.149Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "CalendarImportService.cs",
+              "DocumentMoniker": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\Services\\CalendarImportService.cs",
+              "RelativeDocumentMoniker": "Services\\CalendarImportService.cs",
+              "ToolTip": "C:\\Users\\talha\\Downloads\\test-app-main\\test-app-main\\Services\\CalendarImportService.cs",
+              "RelativeToolTip": "Services\\CalendarImportService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-23T22:41:25.177Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

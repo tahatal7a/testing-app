@@ -1,0 +1,285 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Media;
+using DesktopTaskAid.Models;
+using DesktopTaskAid.ViewModels;
+using DesktopTaskAid.Converters;
+using DesktopTaskAid.Services;
+using NUnit.Framework;
+
+namespace DesktopTaskAid.Tests
+{
+    [TestFixture]
+    [Apartment(ApartmentState.STA)]
+    public class MainViewModelTests
+    {
+        [SetUp]
+        public void Setup()
+        {
+            if (Application.Current == null)
+            {
+                new Application();
+            }
+            Application.Current.Resources.MergedDictionaries.Clear();
+            Application.Current.Resources["IsDarkTheme"] = false; // default light
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            Application.Current.Resources.MergedDictionaries.Clear();
+        }
+
+        [Test]
+        public void Constructor_InitializesCollectionsAndProperties()
+        {
+            var vm = new MainViewModel();
+            Assert.IsNotNull(vm.AllTasks);
+            Assert.IsNotNull(vm.DisplayedTasks);
+            Assert.IsNotNull(vm.CalendarDays);
+            Assert.IsNotNull(vm.DailyTasks);
+            Assert.Greater(vm.PageSize, 0);
+            StringAssert.Contains(DateTime.Now.ToString("MMMM", CultureInfo.InvariantCulture), vm.CurrentMonthDisplay);
+        }
+
+        [Test]
+        public void ToggleTheme_SetsResourceFlagAndTogglesState()
+        {
+            var vm = new MainViewModel();
+            var initial = vm.IsDarkTheme;
+
+            vm.ToggleThemeCommand.Execute(null);
+
+            Assert.AreNotEqual(initial, vm.IsDarkTheme);
+            Assert.AreEqual(vm.IsDarkTheme, (bool)Application.Current.Resources["IsDarkTheme"]);
+        }
+
+        [Test]
+        public void ToggleTimer_And_ResetTimer()
+        {
+            var vm = new MainViewModel();
+            var startRemaining = vm.TimerRemaining;
+
+            vm.ToggleTimerCommand.Execute(null);
+            Assert.IsTrue(vm.TimerRunning);
+            vm.ToggleTimerCommand.Execute(null);
+            Assert.IsFalse(vm.TimerRunning);
+
+            vm.ResetTimerCommand.Execute(null);
+            Assert.IsFalse(vm.TimerRunning);
+            Assert.AreEqual(startRemaining, vm.TimerRemaining);
+        }
+
+        [Test]
+        public void Pagination_Filtering_And_Text()
+        {
+            var vm = new MainViewModel();
+
+            // Seed some tasks
+            vm.AllTasks.Clear();
+            var today = DateTime.Today;
+            for (int i = 0; i < 15; i++)
+            {
+                vm.AllTasks.Add(new TaskItem
+                {
+                    Name = "Task " + i,
+                    DueDate = today.AddDays(i),
+                    DueTime = TimeSpan.FromHours(9),
+                    ReminderStatus = "active",
+                    ReminderLabel = "Label " + i
+                });
+            }
+
+            vm.PageSize = 5;
+            vm.CurrentPage = 1;
+            var firstPageText = vm.PaginationText; // triggers calculation via setters
+            StringAssert.Contains("of 15", firstPageText);
+
+            vm.SearchText = "Task 1"; // matches 1,10,11,12,13,14 => 6 items
+            StringAssert.Contains("of 6", vm.PaginationText);
+        }
+
+        [Test]
+        public void GenerateCalendarDays_ReflectsSelectedMonthAndToday()
+        {
+            var vm = new MainViewModel();
+            vm.CurrentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            vm.SelectedDate = DateTime.Today;
+
+            var hasToday = vm.CalendarDays.Any(d => !d.IsPlaceholder && d.IsToday);
+            Assert.IsTrue(hasToday);
+        }
+
+        [Test]
+        public void SaveAndEditTask_FlowsThroughCollections()
+        {
+            var vm = new MainViewModel();
+
+            // Open add modal and save
+            vm.AddTaskCommand.Execute(null);
+            Assert.IsTrue(vm.IsModalOpen);
+            vm.EditingTask.Name = "New Task";
+            vm.SaveTaskCommand.Execute(null);
+            Assert.IsFalse(vm.IsModalOpen);
+            Assert.IsTrue(vm.AllTasks.Any(t => t.Name == "New Task"));
+
+            // Edit existing
+            var existing = vm.AllTasks.First(t => t.Name == "New Task");
+            vm.EditTaskCommand.Execute(existing);
+            vm.EditingTask.Name = "Updated";
+            vm.SaveTaskCommand.Execute(null);
+            Assert.IsTrue(vm.AllTasks.Any(t => t.Name == "Updated"));
+        }
+
+        [Test]
+        public async Task HandleImportResultAsync_Success_BuildsSummaryAndMerges()
+        {
+            var vm = new MainViewModel();
+
+            // Existing task with external id to be updated
+            var existing = new TaskItem
+            {
+                ExternalId = "x1",
+                Name = "Old",
+                DueDate = DateTime.Today,
+                DueTime = TimeSpan.FromHours(8),
+                ReminderStatus = "none",
+                ReminderLabel = "Not set"
+            };
+            vm.AllTasks.Add(existing);
+
+            var duplicate = new TaskItem
+            {
+                Name = existing.Name,
+                DueDate = existing.DueDate,
+                DueTime = existing.DueTime,
+                ReminderStatus = existing.ReminderStatus,
+                ReminderLabel = existing.ReminderLabel
+            };
+
+            var update = new TaskItem
+            {
+                ExternalId = "x1",
+                Name = "NewName",
+                DueDate = existing.DueDate,
+                DueTime = existing.DueTime
+            };
+
+            var added = new TaskItem
+            {
+                ExternalId = "new",
+                Name = "Brand New",
+                DueDate = DateTime.Today.AddDays(1),
+                DueTime = TimeSpan.FromHours(10)
+            };
+
+            var result = new CalendarImportResult
+            {
+                Outcome = CalendarImportOutcome.Success,
+                Tasks = new List<TaskItem> { duplicate, update, added }
+            };
+
+            // invoke private HandleImportResultAsync
+            var method = typeof(MainViewModel).GetMethod("HandleImportResultAsync", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method);
+            var task = (Task)method.Invoke(vm, new object[] { result });
+            await task.ConfigureAwait(false);
+
+            StringAssert.StartsWith("Import complete:", vm.ImportStatusMessage);
+            StringAssert.Contains("1 new", vm.ImportStatusMessage);
+            StringAssert.Contains("1 task updated", vm.ImportStatusMessage);
+            StringAssert.DoesNotContain("duplicates", vm.ImportStatusMessage.ToLowerInvariant());
+        }
+
+        [Test]
+        public async Task HandleImportResultAsync_NoEvents_And_Cancelled()
+        {
+            var vm = new MainViewModel();
+
+            var method = typeof(MainViewModel).GetMethod("HandleImportResultAsync", BindingFlags.Instance | BindingFlags.NonPublic);
+
+            var noEvents = new CalendarImportResult { Outcome = CalendarImportOutcome.NoEvents };
+            await (Task)method.Invoke(vm, new object[] { noEvents });
+            StringAssert.Contains("No Google Calendar events were found", vm.ImportStatusMessage);
+
+            var cancelled = new CalendarImportResult { Outcome = CalendarImportOutcome.Cancelled };
+            await (Task)method.Invoke(vm, new object[] { cancelled });
+            StringAssert.Contains("Sign-in canceled", vm.ImportStatusMessage);
+        }
+
+        [Test]
+        public void ApplyImportedValues_ChangesDetectedAndNotDetected()
+        {
+            var vm = new MainViewModel();
+
+            var existing = new TaskItem
+            {
+                Name = "A",
+                DueDate = DateTime.Today,
+                DueTime = TimeSpan.FromHours(9),
+                ReminderStatus = "none",
+                ReminderLabel = "Not set",
+                ExternalId = "e1"
+            };
+
+            var same = new TaskItem
+            {
+                Name = "A",
+                DueDate = existing.DueDate,
+                DueTime = existing.DueTime,
+                ReminderStatus = existing.ReminderStatus,
+                ReminderLabel = existing.ReminderLabel,
+                ExternalId = existing.ExternalId
+            };
+
+            var method = typeof(MainViewModel).GetMethod("ApplyImportedValues", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method);
+
+            var changedFalse = (bool)method.Invoke(vm, new object[] { existing, same });
+            Assert.IsFalse(changedFalse);
+
+            var different = new TaskItem
+            {
+                Name = "B",
+                DueDate = existing.DueDate.Value.AddDays(1),
+                DueTime = TimeSpan.FromHours(10),
+                ReminderStatus = "active",
+                ReminderLabel = "Label",
+                ExternalId = "e2"
+            };
+
+            var changedTrue = (bool)method.Invoke(vm, new object[] { existing, different });
+            Assert.IsTrue(changedTrue);
+        }
+
+        [Test]
+        public void IconStrokeConverter_UsesIsDarkThemeResource()
+        {
+            var conv = new IconStrokeConverter();
+
+            Application.Current.Resources["IsDarkTheme"] = true;
+            var dark = (SolidColorBrush)conv.Convert(null, typeof(Brush), null, null);
+            Assert.AreEqual(Colors.White, dark.Color);
+
+            Application.Current.Resources["IsDarkTheme"] = false;
+            var light = (SolidColorBrush)conv.Convert(null, typeof(Brush), null, null);
+            Assert.AreEqual(Color.FromRgb(0x1A, 0x1A, 0x1A), light.Color);
+        }
+
+        [Test]
+        public void InverseBoolToVisibilityConverter_Basic()
+        {
+            var conv = new InverseBoolToVisibilityConverter();
+            Assert.AreEqual(Visibility.Collapsed, conv.Convert(true, typeof(Visibility), null, null));
+            Assert.AreEqual(Visibility.Visible, conv.Convert(false, typeof(Visibility), null, null));
+            Assert.IsTrue((bool)conv.ConvertBack(Visibility.Collapsed, typeof(bool), null, null));
+            Assert.IsFalse((bool)conv.ConvertBack(Visibility.Visible, typeof(bool), null, null));
+        }
+    }
+}
